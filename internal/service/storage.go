@@ -53,3 +53,11 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 	}
 	return nil
 }
+
+func (s *MemStorage) GetMetric(id string) *model.Metrics {
+	if metric, exists := s.metrics[id]; exists {
+		return metric
+	} else {
+		return nil
+	}
+}
