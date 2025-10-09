@@ -1,0 +1,18 @@
+services:
+
+  metrics-server:
+    container_name: metrics-server
+    ports:
+      - 5950:8080
+    build:
+      context: ./
+      network: host
+      dockerfile: Dockerfile.server.dev
+    volumes:
+      - ./:/workspace
+    networks:
+      - metrics-network
+
+
+networks:
+  metrics-network:

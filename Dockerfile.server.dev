@@ -1,0 +1,12 @@
+# Разработка
+FROM docker.io/library/golang:1.24.2 as dev
+
+WORKDIR /workspace
+
+RUN go install github.com/cosmtrek/air@v1.29.0 
+
+COPY . .
+
+RUN go mod download
+
+CMD air -c .air.server.toml
