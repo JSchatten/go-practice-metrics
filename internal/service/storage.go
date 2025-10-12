@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
@@ -13,6 +14,25 @@ type MemStorage struct {
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		metrics: make(map[string]*model.Metrics),
+	}
+}
+
+func (s *MemStorage) String() string {
+	if len(s.metrics) == 0 {
+		return ""
+	} else {
+		var metrics = []model.Metrics{}
+
+		for _, metric := range s.metrics {
+			metrics = append(metrics, *metric)
+		}
+
+		metricsStr, err := json.Marshal(metrics)
+		if err != nil {
+			panic(err)
+		} else {
+			return string(metricsStr)
+		}
 	}
 }
 
