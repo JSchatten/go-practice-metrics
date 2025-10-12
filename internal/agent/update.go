@@ -13,11 +13,34 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-const (
-	pollInterval   = 2 * time.Second
-	reportInterval = 10 * time.Second
-	serverAddr     = "127.0.0.1:8080"
-)
+type flags struct {
+	ServerAddr     string
+	PollInterval   time.Duration
+	ReportInterval time.Duration
+}
+
+func InitFlags(
+	pollInterval int,
+	reportInterval int,
+	serverAddr string,
+
+) *flags {
+
+	if pollInterval == 0 {
+		pollInterval = 2
+	}
+	if reportInterval == 0 {
+		reportInterval = 10
+	} else {
+		reportInterval = pollInterval
+	}
+
+	return &flags{
+		PollInterval:   time.Duration(pollInterval) * time.Second,
+		ReportInterval: time.Duration(reportInterval) * time.Second,
+		ServerAddr:     serverAddr,
+	}
+}
 
 func getMetricGauge(id string, value float64) *MetricsModel.Metrics {
 	return &MetricsModel.Metrics{
@@ -36,7 +59,7 @@ func getMetricCount(id string, delta int64) *MetricsModel.Metrics {
 }
 
 // Функция-заглушка для отправки метрик
-func sendMetrics(memStorage *storage.MemStorage) error {
+func sendMetrics(serverAdress string, memStorage *storage.MemStorage) error {
 	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 	// fmt.Printf("Отправка метрик: %s\n", memStorage.String())
 	client := resty.New()
@@ -71,7 +94,7 @@ func sendMetrics(memStorage *storage.MemStorage) error {
 			valueStr = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
 		}
 
-		url := fmt.Sprintf("http://%s/update/%s/%s/%s", serverAddr, metricType, metric.ID, valueStr)
+		url := fmt.Sprintf("http://%s/update/%s/%s/%s", serverAdress, metricType, metric.ID, valueStr)
 
 		// Отправляем POST-запрос
 		resp, err := client.R().
@@ -92,9 +115,9 @@ func sendMetrics(memStorage *storage.MemStorage) error {
 }
 
 // Функция для обновления метрик из runtime
-func UpdateRuntimeMetrics(storage *storage.MemStorage, done <-chan struct{}) {
-	tickerCollect := time.NewTicker(pollInterval)
-	tickerSend := time.NewTicker(reportInterval)
+func UpdateRuntimeMetrics(cfg flags, storage *storage.MemStorage, done <-chan struct{}) {
+	tickerCollect := time.NewTicker(cfg.PollInterval)
+	tickerSend := time.NewTicker(cfg.ReportInterval)
 	defer tickerCollect.Stop()
 	defer tickerSend.Stop()
 
@@ -102,7 +125,7 @@ func UpdateRuntimeMetrics(storage *storage.MemStorage, done <-chan struct{}) {
 		select {
 		case <-tickerSend.C:
 			fmt.Println("Sending metrics...")
-			err := sendMetrics(storage)
+			err := sendMetrics(cfg.ServerAddr, storage)
 			if err != nil {
 				fmt.Printf("Error sending metrics: %v\n", err)
 			} else {
