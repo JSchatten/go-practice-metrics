@@ -6,22 +6,23 @@ import (
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storageService "github.com/JSchatten/go-practice-metrics/internal/service"
+	"github.com/gin-gonic/gin"
 )
 
 // Для проверки
-func LiveHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("It's alive!"))
-		w.WriteHeader(http.StatusOK)
+func LiveHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, gin.H{"status": "It's alive!"})
 	}
 }
 
 // Обработчик для корневого пути /
-func RootHandler(storage storageService.Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+func RootHandler(storage storageService.Storage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet {
 			// http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			http.Error(w, "Method not allowed", http.StatusBadRequest)
+			// http.Error(w, "Method not allowed", http.StatusBadRequest)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
 			return
 		}
 
@@ -55,8 +56,10 @@ func RootHandler(storage storageService.Storage) http.HandlerFunc {
 		}
 		html += "</table></body></html>"
 
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(html))
-		w.WriteHeader(http.StatusOK)
+		// w.Header().Set("Content-Type", "text/html")
+		// w.Write([]byte(html))
+		// w.WriteHeader(http.StatusOK)
+		c.Header("Content-Type", "text/html")
+		c.String(http.StatusOK, html)
 	}
 }
