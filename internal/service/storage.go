@@ -10,6 +10,10 @@ type MemStorage struct {
 	metrics map[string]*model.Metrics
 }
 
+type Storage interface {
+	UpdateMetric(metric *model.Metrics) error
+}
+
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		metrics: make(map[string]*model.Metrics),

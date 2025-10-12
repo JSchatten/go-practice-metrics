@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
+	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 )
 
@@ -19,7 +19,7 @@ func LiveHandler() http.HandlerFunc {
 }
 
 // Обработчик HTTP-запросов
-func UpdateHandler(storage *storage.MemStorage) http.HandlerFunc {
+func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -48,29 +48,29 @@ func UpdateHandler(storage *storage.MemStorage) http.HandlerFunc {
 			return
 		}
 
-		var metric *MetricsModel.Metrics
+		var metric *model.Metrics
 
 		switch metricType {
-		case MetricsModel.Gauge:
+		case model.Gauge:
 			valueFloat, err := strconv.ParseFloat(valueStr, 64)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Invalid value format: %v", err), http.StatusBadRequest)
 				return
 			}
-			metric = &MetricsModel.Metrics{
+			metric = &model.Metrics{
 				ID:    metricName,
-				MType: MetricsModel.Gauge,
+				MType: model.Gauge,
 				Value: &valueFloat,
 			}
-		case MetricsModel.Counter:
+		case model.Counter:
 			valueInt, err := strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Invalid value format: %v", err), http.StatusBadRequest)
 				return
 			}
-			metric = &MetricsModel.Metrics{
+			metric = &model.Metrics{
 				ID:    metricName,
-				MType: MetricsModel.Counter,
+				MType: model.Counter,
 				Delta: &valueInt,
 			}
 		default:
