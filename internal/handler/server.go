@@ -20,7 +20,8 @@ func LiveHandler() http.HandlerFunc {
 func RootHandler(storage storageService.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			// http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusBadRequest)
 			return
 		}
 
