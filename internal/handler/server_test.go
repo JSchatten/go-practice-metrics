@@ -25,6 +25,10 @@ func (m *MockStorage) GetMetric(id string) *model.Metrics {
 	return nil
 }
 
+func (m *MockStorage) String() string {
+	return ""
+}
+
 // func newMockStorage() *MockStorage {
 // 	return &MockStorage{
 // 		UpdateMetricCalls: []*model.Metrics{},

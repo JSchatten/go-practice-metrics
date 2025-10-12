@@ -13,6 +13,8 @@ type MemStorage struct {
 
 type Storage interface {
 	UpdateMetric(metric *model.Metrics) error
+	GetMetric(id string) *model.Metrics
+	String() string
 }
 
 func NewMemStorage() *MemStorage {

@@ -3,11 +3,9 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
-	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+	storageService "github.com/JSchatten/go-practice-metrics/internal/service"
 )
 
 // Для проверки
@@ -18,91 +16,46 @@ func LiveHandler() http.HandlerFunc {
 	}
 }
 
-// Обработчик HTTP-запросов
-func UpdateHandler(storage storage.Storage) http.HandlerFunc {
+// Обработчик для корневого пути /
+func RootHandler(storage storageService.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		// fmt.Println(r.URL.Path)
-		if r.Method != http.MethodPost {
-			fmt.Println("Method not allowed")
+		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// if r.Header.Get("Content-Type") != "text/plain" {
-		// 	fmt.Println("Invalid Content-Type")
-		// 	http.Error(w, "Invalid Content-Type", http.StatusBadRequest)
-		// 	return
-		// }
-
-		// Парсинг пути
-		pathParts := strings.Split(r.URL.Path, "/")
-		if len(pathParts) < 5 || pathParts[1] != "update" {
-			// http.Error(w, "Invalid URL format", http.StatusBadRequest)
-			http.Error(w, "Invalid URL format", http.StatusNotFound)
-			return
-		}
-		// Тут рипаем по кускам
-		metricType := pathParts[2]
-		metricName := pathParts[3]
-		valueStr := pathParts[4]
-
-		// fmt.Println("metricType", metricType)
-		// fmt.Println("metricName", metricName)
-		// fmt.Println("valueStr", valueStr)
-
-		// И проверяем на пустоту
-		if metricType == "" {
-			http.Error(w, "Metric type name is required", http.StatusNotFound)
-			return
-		}
-		if metricName == "" {
-			http.Error(w, "Metric name is required", http.StatusNotFound)
-			return
-		}
-		if valueStr == "" {
-			http.Error(w, "Metric Value is required", http.StatusNotFound)
-			return
+		// Получаем все метрики
+		metrics := make([]model.Metrics, 0, len(storage.(*storageService.MemStorage).Metrics))
+		for _, metric := range storage.(*storageService.MemStorage).Metrics {
+			metrics = append(metrics, *metric)
 		}
 
-		var metric *model.Metrics
-
-		switch metricType {
-		case model.Gauge:
-			valueFloat, err := strconv.ParseFloat(valueStr, 64)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Invalid value format: %v", err), http.StatusBadRequest)
-				return
+		// Генерируем HTML
+		html := "<html><body><h1>Metrics</h1><table border='1'><tr><th>ID</th><th>Type</th><th>Value/Delta</th></tr>"
+		for _, metric := range metrics {
+			var value string
+			switch metric.MType {
+			case model.Gauge:
+				if metric.Value == nil {
+					value = "N/A"
+				} else {
+					value = fmt.Sprintf("%.2f", *metric.Value)
+				}
+			case model.Counter:
+				if metric.Delta == nil {
+					value = "N/A"
+				} else {
+					value = fmt.Sprintf("%d", *metric.Delta)
+				}
+			default:
+				value = "Unknown type"
 			}
-			metric = &model.Metrics{
-				ID:    metricName,
-				MType: model.Gauge,
-				Value: &valueFloat,
-			}
-		case model.Counter:
-			valueInt, err := strconv.ParseInt(valueStr, 10, 64)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Invalid value format: %v", err), http.StatusBadRequest)
-				return
-			}
-			metric = &model.Metrics{
-				ID:    metricName,
-				MType: model.Counter,
-				Delta: &valueInt,
-			}
-		default:
-			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
-			return
+			html += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>", metric.ID, metric.MType, value)
 		}
+		html += "</table></body></html>"
 
-		// Обновление метрики
-		if err := storage.UpdateMetric(metric); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to update metric: %v", err), http.StatusBadRequest)
-			return
-		}
-
-		fmt.Printf("Metrics %+v added \n", metric)
-
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(html))
 		w.WriteHeader(http.StatusOK)
 	}
 }
