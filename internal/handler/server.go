@@ -25,7 +25,8 @@ func LiveHandler() gin.HandlerFunc {
 func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet {
-			methodNotAllowed(c)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
+			// methodNotAllowed(c)
 			return
 		}
 
