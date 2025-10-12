@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -13,7 +14,8 @@ import (
 func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodPost {
-			methodNotAllowed(c)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
+			// methodNotAllowed(c)
 			return
 		}
 
@@ -21,7 +23,8 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		metricName := c.Param("name")
 		valueStr := c.Param("value")
 		if metricType == "" || metricName == "" || valueStr == "" {
-			missingParameters(c)
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Missing required parameters"})
+			// missingParameters(c)
 			return
 		}
 
@@ -31,7 +34,8 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		case model.Gauge:
 			valueFloat, err := strconv.ParseFloat(valueStr, 64)
 			if err != nil {
-				invalidValueFormat(c, err)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid value format: %v", err)})
+				// invalidValueFormat(c, err)
 				return
 			}
 			metric = &model.Metrics{
@@ -42,7 +46,8 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		case model.Counter:
 			valueInt, err := strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
-				invalidValueFormat(c, err)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Missing required parameters"})
+				// invalidValueFormat(c, err)
 				return
 			}
 			metric = &model.Metrics{
@@ -51,13 +56,15 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 				Delta: &valueInt,
 			}
 		default:
-			unknownMetricType(c, metricType)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unknown metric type: %s", metricType)})
+			// unknownMetricType(c, metricType)
 			return
 		}
 
 		// Обновление метрики
 		if err := storage.UpdateMetric(metric); err != nil {
-			failedToUpdateMetric(c, err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to update metric: %v", err)})
+			// failedToUpdateMetric(c, err)
 			return
 		}
 		// fmt.Printf("Metrics %+v added \n", metric)
