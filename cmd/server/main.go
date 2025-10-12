@@ -16,8 +16,8 @@ type Storage interface {
 func main() {
 	storageObj := storage.NewMemStorage()
 	http.HandleFunc("/update/", handlers.UpdateHandler(storageObj))
-	http.HandleFunc("/live/", handlers.LiveHandler())
-	http.HandleFunc("/", handlers.LiveHandler())
+	// http.HandleFunc("/live/", handlers.LiveHandler())
+	// http.HandleFunc("/", handlers.LiveHandler())
 	fmt.Println("Server started at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
