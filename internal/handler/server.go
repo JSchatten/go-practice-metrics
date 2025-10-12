@@ -29,11 +29,11 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		if r.Header.Get("Content-Type") != "text/plain" {
-			fmt.Println("Invalid Content-Type")
-			http.Error(w, "Invalid Content-Type", http.StatusBadRequest)
-			return
-		}
+		// if r.Header.Get("Content-Type") != "text/plain" {
+		// 	fmt.Println("Invalid Content-Type")
+		// 	http.Error(w, "Invalid Content-Type", http.StatusBadRequest)
+		// 	return
+		// }
 
 		// Парсинг пути
 		pathParts := strings.Split(r.URL.Path, "/")
@@ -101,6 +101,8 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 			http.Error(w, fmt.Sprintf("Failed to update metric: %v", err), http.StatusBadRequest)
 			return
 		}
+
+		fmt.Printf("Metrics %+v added", metric)
 
 		w.WriteHeader(http.StatusOK)
 	}
