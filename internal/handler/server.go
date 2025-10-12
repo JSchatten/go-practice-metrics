@@ -38,7 +38,8 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 		// Парсинг пути
 		pathParts := strings.Split(r.URL.Path, "/")
 		if len(pathParts) < 5 || pathParts[1] != "update" {
-			http.Error(w, "Invalid URL format", http.StatusBadRequest)
+			// http.Error(w, "Invalid URL format", http.StatusBadRequest)
+			http.Error(w, "Invalid URL format", http.StatusNotFound)
 			return
 		}
 		// Тут рипаем по кускам
