@@ -17,7 +17,8 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 		// fmt.Println(r.URL.Path)
 		if r.Method != http.MethodPost {
 			fmt.Println("Method not allowed")
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			// http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusBadRequest)
 			return
 		}
 
