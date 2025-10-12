@@ -1,124 +1,90 @@
 package handler_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/JSchatten/go-practice-metrics/internal/handler"
-	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+	storageService "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateHandler(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		storage storage.Storage
-		want    gin.HandlerFunc
+		name           string
+		method         string
+		url            string
+		expectedStatus int
+		expectedBody   string
 	}{
-		// {
-		// 	name:           "Valid Gauge",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/gauge/metric_name/123.45",
-		// 	expectedStatus: http.StatusOK,
-		// },
-		// {
-		// 	name:           "Valid Counter",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/counter/metric_name/678",
-		// 	expectedStatus: http.StatusOK,
-		// },
-		// {
-		// 	name:           "Invalid Method",
-		// 	method:         http.MethodGet,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/gauge/metric_name/123.45",
-		// 	expectedStatus: http.StatusMethodNotAllowed,
-		// },
-		// {
-		// 	name:           "Invalid Content-Type",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "application/json",
-		// 	urlPath:        "/update/gauge/metric_name/123.45",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-		// {
-		// 	name:           "Invalid URL Format",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/invalid_type/metric_name/123.45",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-		// {
-		// 	name:           "Missing Metric Name",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/gauge//123.45",
-		// 	expectedStatus: http.StatusNotFound,
-		// },
-		// {
-		// 	name:           "Unknown Metric Type",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/unknown/metric_name/123.45",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-		// {
-		// 	name:           "Invalid Gauge Value",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/gauge/metric_name/abc",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-		// {
-		// 	name:           "Invalid Counter Value",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/counter/metric_name/def",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-
-		// test ya
-		// {
-		// 	name:           "TestGaugeHandlers/without_id",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/gauge/",
-		// 	expectedStatus: http.StatusNotFound,
-		// },
-		// {
-		// 	name:           "TestUnknownHandlers/update_invalid_type",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/unknown/testCounter/100",
-		// 	expectedStatus: http.StatusOK,
-		// },
-
-		// // without id
-		// {
-		// 	name:           "Without Id",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update/counter//def",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
-		// // without type
-		// {
-		// 	name:           "Without Id",
-		// 	method:         http.MethodPost,
-		// 	contentType:    "text/plain",
-		// 	urlPath:        "/update//metric_name/def",
-		// 	expectedStatus: http.StatusBadRequest,
-		// },
+		{
+			name:           "Valid gauge update",
+			method:         http.MethodPost,
+			url:            "/update/gauge/cpu_usage/99.5",
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"status":"Metric updated"}`,
+		},
+		{
+			name:           "Valid counter update",
+			method:         http.MethodPost,
+			url:            "/update/counter/request_count/1",
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"status":"Metric updated"}`,
+		},
+		{
+			name:           "Invalid HTTP method",
+			method:         http.MethodGet,
+			url:            "/update/gauge/cpu_usage/99.5",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"Method not allowed"}`,
+		},
+		{
+			name:           "Missing parameters",
+			method:         http.MethodPost,
+			url:            "/update/gauge//99.5",
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"error":"Missing required parameters"}`,
+		},
+		{
+			name:           "Unknown metric type",
+			method:         http.MethodPost,
+			url:            "/update/invalid/type/99.5",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"Unknown metric type: invalid"}`,
+		},
+		{
+			name:           "Invalid gauge value format",
+			method:         http.MethodPost,
+			url:            "/update/gauge/cpu_usage/abc",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"Invalid value format: strconv.ParseFloat: parsing \"abc\": invalid syntax"}`,
+		},
+		{
+			name:           "Invalid counter value format",
+			method:         http.MethodPost,
+			url:            "/update/counter/request_count/abc",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"Invalid value format: strconv.ParseInt: parsing \"abc\": invalid syntax"}`,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := handler.UpdateHandler(tt.storage)
-			// TODO: update the condition below to compare got with tt.want.
-			if true {
-				t.Errorf("UpdateHandler() = %v, want %v", got, tt.want)
-			}
+			// Создаем инстанс Gin и регистрируем обработчик
+			r := gin.Default()
+			r.POST("/update/:type/:name/:value", handler.UpdateHandler(storageService.NewMemStorage()))
+
+			// Создаем запрос
+			req, _ := http.NewRequest(tt.method, tt.url, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			// Проверяем статус и тело ответа
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			assert.JSONEq(t, tt.expectedBody, w.Body.String())
 		})
 	}
+
 }

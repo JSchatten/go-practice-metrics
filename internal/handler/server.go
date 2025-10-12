@@ -9,6 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	htmlTop    = "<html><body><h1>Metrics</h1><table border='1'><tr><th>ID</th><th>Type</th><th>Value/Delta</th></tr>"
+	htmlBottom = "</table></body></html>"
+)
+
 // Для проверки
 func LiveHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -20,9 +25,7 @@ func LiveHandler() gin.HandlerFunc {
 func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet {
-			// http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			// http.Error(w, "Method not allowed", http.StatusBadRequest)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
+			methodNotAllowed(c)
 			return
 		}
 
@@ -33,7 +36,7 @@ func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 		}
 
 		// Генерируем HTML
-		html := "<html><body><h1>Metrics</h1><table border='1'><tr><th>ID</th><th>Type</th><th>Value/Delta</th></tr>"
+		html := htmlTop
 		for _, metric := range metrics {
 			var value string
 			switch metric.MType {
@@ -54,11 +57,8 @@ func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 			}
 			html += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>", metric.ID, metric.MType, value)
 		}
-		html += "</table></body></html>"
+		html += htmlBottom
 
-		// w.Header().Set("Content-Type", "text/html")
-		// w.Write([]byte(html))
-		// w.WriteHeader(http.StatusOK)
 		c.Header("Content-Type", "text/html")
 		c.String(http.StatusOK, html)
 	}
