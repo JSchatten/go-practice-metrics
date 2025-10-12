@@ -10,8 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var address string
+
 func main() {
-	var address string
 	flag.StringVar(&address, "a", "localhost:8080", "Server address (default: localhost:8080)")
 	flag.Parse()
 
@@ -28,5 +29,5 @@ func main() {
 	router.GET("/", handlers.RootHandler(storageObj))
 
 	fmt.Printf("Server started at %s\n", address)
-	router.Run(":8080")
+	router.Run(address)
 }
