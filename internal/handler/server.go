@@ -92,7 +92,7 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 			}
 		default:
 			// http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
-			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
 			return
 		}
 
