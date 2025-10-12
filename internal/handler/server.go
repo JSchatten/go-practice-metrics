@@ -22,7 +22,7 @@ func LiveHandler() http.HandlerFunc {
 func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println(r.URL.Path)
+		// fmt.Println(r.URL.Path)
 		if r.Method != http.MethodPost {
 			fmt.Println("Method not allowed")
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -47,9 +47,9 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 		metricName := pathParts[3]
 		valueStr := pathParts[4]
 
-		fmt.Println("metricType", metricType)
-		fmt.Println("metricName", metricName)
-		fmt.Println("valueStr", valueStr)
+		// fmt.Println("metricType", metricType)
+		// fmt.Println("metricName", metricName)
+		// fmt.Println("valueStr", valueStr)
 
 		// И проверяем на пустоту
 		if metricType == "" {
@@ -91,7 +91,6 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 				Delta: &valueInt,
 			}
 		default:
-			// http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
 			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
 			return
 		}
@@ -102,7 +101,7 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		fmt.Printf("Metrics %+v added", metric)
+		// fmt.Printf("Metrics %+v added", metric)
 
 		w.WriteHeader(http.StatusOK)
 	}
