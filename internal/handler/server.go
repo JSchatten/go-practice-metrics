@@ -101,7 +101,7 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		// fmt.Printf("Metrics %+v added", metric)
+		fmt.Printf("Metrics %+v added \n", metric)
 
 		w.WriteHeader(http.StatusOK)
 	}
