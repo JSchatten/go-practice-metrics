@@ -34,7 +34,7 @@ func badRequest(c *gin.Context) {
 }
 
 func missingParameters(c *gin.Context) {
-	abortWithError(c, http.StatusBadRequest, ErrMissingParameters)
+	abortWithError(c, http.StatusNotFound, ErrMissingParameters)
 }
 
 func invalidValueFormat(c *gin.Context, err error) {
