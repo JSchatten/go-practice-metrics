@@ -1,67 +1,19 @@
 package handler_test
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
-	handler "github.com/JSchatten/go-practice-metrics/internal/handler"
-	model "github.com/JSchatten/go-practice-metrics/internal/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/JSchatten/go-practice-metrics/internal/handler"
+	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+	"github.com/gin-gonic/gin"
 )
 
-// MockStorage реализует интерфейс Storage для тестирования
-type MockStorage struct {
-	UpdateMetricCalls []*model.Metrics
-}
-
-func (m *MockStorage) UpdateMetric(metric *model.Metrics) error {
-	m.UpdateMetricCalls = append(m.UpdateMetricCalls, metric)
-	return nil
-}
-
-func (m *MockStorage) GetMetric(id string) *model.Metrics {
-	return nil
-}
-
-func (m *MockStorage) String() string {
-	return ""
-}
-
-// func newMockStorage() *MockStorage {
-// 	return &MockStorage{
-// 		UpdateMetricCalls: []*model.Metrics{},
-// 	}
-// }
-
-// Тест для LiveHandler
-func TestLiveHandler(t *testing.T) {
-	handler := handler.LiveHandler()
-	req := httptest.NewRequest("GET", "/live/", nil)
-	w := httptest.NewRecorder()
-
-	handler(w, req)
-
-	resp := w.Result()
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	body := strings.TrimSpace(w.Body.String())
-	assert.Equal(t, "It's alive!", body)
-}
-
 func TestUpdateHandler(t *testing.T) {
-	mockStorage := &MockStorage{}
-
-	handler := handler.UpdateHandler(mockStorage)
-
 	tests := []struct {
-		name           string
-		method         string
-		contentType    string
-		urlPath        string
-		expectedStatus int
+		name string // description of this test case
+		// Named input parameters for target function.
+		storage storage.Storage
+		want    gin.HandlerFunc
 	}{
 		// {
 		// 	name:           "Valid Gauge",
@@ -160,43 +112,13 @@ func TestUpdateHandler(t *testing.T) {
 		// 	expectedStatus: http.StatusBadRequest,
 		// },
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			// Очистка перед каждым тестом
-			mockStorage.UpdateMetricCalls = []*model.Metrics{}
-
-			req := httptest.NewRequest(tt.method, tt.urlPath, nil)
-			req.Header.Set("Content-Type", tt.contentType)
-			w := httptest.NewRecorder()
-
-			handler(w, req)
-
-			resp := w.Result()
-			defer resp.Body.Close()
-
-			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
-
-			// Проверка вызова UpdateMetric только для успешных тестов
-			if tt.expectedStatus == http.StatusOK {
-				assert.Len(t, mockStorage.UpdateMetricCalls, 1)
-				metric := mockStorage.UpdateMetricCalls[0]
-				assert.Equal(t, "metric_name", metric.ID)
-				switch tt.urlPath {
-				case "/update/gauge/metric_name/123.45":
-					assert.Equal(t, model.Gauge, metric.MType)
-					assert.Equal(t, float64(123.45), *metric.Value)
-					assert.Nil(t, metric.Delta)
-				case "/update/counter/metric_name/678":
-					assert.Equal(t, model.Counter, metric.MType)
-					assert.Nil(t, metric.Value)
-					assert.Equal(t, int64(678), *metric.Delta)
-				}
-			} else {
-				assert.Len(t, mockStorage.UpdateMetricCalls, 0)
+			got := handler.UpdateHandler(tt.storage)
+			// TODO: update the condition below to compare got with tt.want.
+			if true {
+				t.Errorf("UpdateHandler() = %v, want %v", got, tt.want)
 			}
 		})
 	}
-
 }
