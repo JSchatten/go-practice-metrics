@@ -93,14 +93,14 @@ func sendMetrics(memStorage *storage.MemStorage) error {
 
 // Функция для обновления метрик из runtime
 func UpdateRuntimeMetrics(storage *storage.MemStorage, done <-chan struct{}) {
-	ticker_collect := time.NewTicker(pollInterval)
-	ticker_send := time.NewTicker(reportInterval)
-	defer ticker_collect.Stop()
-	defer ticker_send.Stop()
+	tickerCollect := time.NewTicker(pollInterval)
+	tickerSend := time.NewTicker(reportInterval)
+	defer tickerCollect.Stop()
+	defer tickerSend.Stop()
 
 	for {
 		select {
-		case <-ticker_send.C:
+		case <-tickerSend.C:
 			fmt.Println("Sending metrics...")
 			err := sendMetrics(storage)
 			if err != nil {
@@ -108,7 +108,7 @@ func UpdateRuntimeMetrics(storage *storage.MemStorage, done <-chan struct{}) {
 			} else {
 				fmt.Println("Sended successful")
 			}
-		case <-ticker_collect.C:
+		case <-tickerCollect.C:
 			fmt.Println("Collecting metrics...")
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
