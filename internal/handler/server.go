@@ -42,9 +42,21 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 		metricName := pathParts[3]
 		valueStr := pathParts[4]
 
+		// fmt.Println(metricType)
+		// fmt.Println(metricName)
+		// fmt.Println(valueStr)
+
 		// И проверяем на пустоту
+		if metricType == "" {
+			http.Error(w, "Metric type name is required", http.StatusNotFound)
+			return
+		}
 		if metricName == "" {
 			http.Error(w, "Metric name is required", http.StatusNotFound)
+			return
+		}
+		if valueStr == "" {
+			http.Error(w, "Metric Value is required", http.StatusNotFound)
 			return
 		}
 
