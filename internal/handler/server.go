@@ -21,12 +21,16 @@ func LiveHandler() http.HandlerFunc {
 // Обработчик HTTP-запросов
 func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		fmt.Println(r.URL.Path)
 		if r.Method != http.MethodPost {
+			fmt.Println("Method not allowed")
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
 		if r.Header.Get("Content-Type") != "text/plain" {
+			fmt.Println("Invalid Content-Type")
 			http.Error(w, "Invalid Content-Type", http.StatusBadRequest)
 			return
 		}
@@ -42,9 +46,9 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 		metricName := pathParts[3]
 		valueStr := pathParts[4]
 
-		// fmt.Println(metricType)
-		// fmt.Println(metricName)
-		// fmt.Println(valueStr)
+		fmt.Println("metricType", metricType)
+		fmt.Println("metricName", metricName)
+		fmt.Println("valueStr", valueStr)
 
 		// И проверяем на пустоту
 		if metricType == "" {
@@ -86,7 +90,8 @@ func UpdateHandler(storage storage.Storage) http.HandlerFunc {
 				Delta: &valueInt,
 			}
 		default:
-			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
+			// http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Unknown metric type: %s", metricType), http.StatusNotFound)
 			return
 		}
 
