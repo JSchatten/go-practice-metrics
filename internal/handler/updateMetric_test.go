@@ -19,54 +19,40 @@ func TestUpdateHandler(t *testing.T) {
 		expectedStatus int
 		expectedBody   string
 	}{
-		// {
-		// 	name:           "Valid gauge update",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/gauge/cpu_usage/99.5",
-		// 	expectedStatus: http.StatusOK,
-		// 	expectedBody:   `{"status":"Metric updated"}`,
-		// },
-		// {
-		// 	name:           "Valid counter update",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/counter/request_count/1",
-		// 	expectedStatus: http.StatusOK,
-		// 	expectedBody:   `{"status":"Metric updated"}`,
-		// },
-		// {
+		{
+			name:           "Valid gauge update",
+			method:         http.MethodPost,
+			url:            "/update/gauge/cpu_usage/99.5",
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"status":"Metric updated"}`,
+		},
+		{
+			name:           "Valid counter update",
+			method:         http.MethodPost,
+			url:            "/update/counter/request_count/1",
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"status":"Metric updated"}`,
+		},
+		{
+			name:           "Missing parameters",
+			method:         http.MethodPost,
+			url:            "/update/gauge//99.5",
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"error":"Missing required parameters"}`,
+		},
+		{
+			name:           "Unknown metric type",
+			method:         http.MethodPost,
+			url:            "/update/invalid/type/99.5",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"Unknown metric type: invalid"}`,
+		},
+		// { // 404 page not found - returns by gin deafult, maybe middleware after next()
 		// 	name:           "Invalid HTTP method",
 		// 	method:         http.MethodGet,
 		// 	url:            "/update/gauge/cpu_usage/99.5",
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   `{"error":"Method not allowed"}`,
-		// },
-		// {
-		// 	name:           "Missing parameters",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/gauge//99.5",
 		// 	expectedStatus: http.StatusNotFound,
-		// 	expectedBody:   `{"error":"Missing required parameters"}`,
-		// },
-		// {
-		// 	name:           "Unknown metric type",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/invalid/type/99.5",
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   `{"error":"Unknown metric type: invalid"}`,
-		// },
-		// {
-		// 	name:           "Invalid gauge value format",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/gauge/cpu_usage/abc",
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   `{"error":"Invalid value format: strconv.ParseFloat: parsing \"abc\": invalid syntax"}`,
-		// },
-		// {
-		// 	name:           "Invalid counter value format",
-		// 	method:         http.MethodPost,
-		// 	url:            "/update/counter/request_count/abc",
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   `{"error":"Invalid value format: strconv.ParseInt: parsing \"abc\": invalid syntax"}`,
+		// 	expectedBody:   `{"error":"Method not allowed"}`,
 		// },
 	}
 

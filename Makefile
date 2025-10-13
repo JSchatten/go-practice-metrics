@@ -21,6 +21,9 @@ run_agent:
 test_server:
 	./metricstest  -test.v -test.run=^TestIteration1$ -server-binary-path=./build/server_out/server
 
+test_server_local:
+	go test ./internal/handler/.
+
 test_agent:
 	./metricstest  -test.v -test.run=^TestIteration1$ -server-binary-path=./build/server_out/server
 

@@ -23,18 +23,18 @@ func InitFlags(
 	pollInterval int,
 	reportInterval int,
 	serverAddr string,
-
 ) *flags {
-
 	if pollInterval == 0 {
 		pollInterval = 2
 	}
 	if reportInterval == 0 {
 		reportInterval = 10
-	} else {
-		reportInterval = pollInterval
 	}
-
+	// Может подуммать над зависимостью интервала отправки от опроса
+	// чтобы ограничить пользователя от безобразий
+	// else if reportInterval < pollInterval {
+	// reportInterval = pollInterval + 1
+	// }
 	return &flags{
 		PollInterval:   time.Duration(pollInterval) * time.Second,
 		ReportInterval: time.Duration(reportInterval) * time.Second,
@@ -53,7 +53,7 @@ func getMetricGauge(id string, value float64) *MetricsModel.Metrics {
 func getMetricCount(id string, delta int64) *MetricsModel.Metrics {
 	return &MetricsModel.Metrics{
 		ID:    id,
-		MType: MetricsModel.Gauge,
+		MType: MetricsModel.Counter,
 		Delta: &delta,
 	}
 }

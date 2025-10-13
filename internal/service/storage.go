@@ -3,12 +3,14 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 )
 
 type MemStorage struct {
 	Metrics map[string]*model.Metrics
+	mx      sync.RWMutex // Мютекс Rw, для параллельнго чтения
 }
 
 type Storage interface {
@@ -24,6 +26,9 @@ func NewMemStorage() *MemStorage {
 }
 
 func (s *MemStorage) String() string {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+
 	if len(s.Metrics) == 0 {
 		return ""
 	} else {
@@ -43,6 +48,9 @@ func (s *MemStorage) String() string {
 }
 
 func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
 	switch metric.MType {
 	case model.Gauge:
 		if metric.Value == nil {
@@ -81,6 +89,8 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 }
 
 func (s *MemStorage) GetMetric(id string) *model.Metrics {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
 	if metric, exists := s.Metrics[id]; exists {
 		return metric
 	} else {
