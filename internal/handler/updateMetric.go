@@ -13,7 +13,6 @@ import (
 func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodPost {
-			// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
 			methodNotAllowed(c)
 			return
 		}
@@ -22,7 +21,6 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		metricName := c.Param("name")
 		valueStr := c.Param("value")
 		if metricType == "" || metricName == "" || valueStr == "" {
-			// c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Missing required parameters"})
 			missingParameters(c)
 			return
 		}
@@ -33,7 +31,6 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		case model.Gauge:
 			valueFloat, err := strconv.ParseFloat(valueStr, 64)
 			if err != nil {
-				// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid value format: %v", err)})
 				invalidValueFormat(c, err)
 				return
 			}
@@ -45,7 +42,6 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		case model.Counter:
 			valueInt, err := strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
-				// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Missing required parameters"})
 				invalidValueFormat(c, err)
 				return
 			}
@@ -55,14 +51,12 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 				Delta: &valueInt,
 			}
 		default:
-			// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unknown metric type: %s", metricType)})
 			unknownMetricType(c, metricType)
 			return
 		}
 
 		// Обновление метрики
 		if err := storage.UpdateMetric(metric); err != nil {
-			// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to update metric: %v", err)})
 			failedToUpdateMetric(c, err)
 			return
 		}
