@@ -35,11 +35,11 @@ func getEnvInt(key string, defaultVal int) int {
 }
 
 func InitServerFlags() (*ServerFlags, error) {
-	var serverAddr string = getEnv("ADDRESS", "")
+	var serverAddr = getEnv("ADDRESS", "")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
-		return nil, fmt.Errorf("Error: unknown flags: %v\n", flag.Args())
+		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
 
 	if serverAddr == "" {
@@ -52,13 +52,13 @@ func InitServerFlags() (*ServerFlags, error) {
 }
 
 func InitAgentFlags() (*AgentFlags, error) {
-	var reportInterval int = getEnvInt("REPORT_INTERVAL", 0)
-	var pollInterval int = getEnvInt("POLL_INTERVAL", 0)
-	var serverAddr string = getEnv("ADDRESS", "")
+	var reportInterval = getEnvInt("REPORT_INTERVAL", 0)
+	var pollInterval = getEnvInt("POLL_INTERVAL", 0)
+	var serverAddr = getEnv("ADDRESS", "")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
-		return nil, fmt.Errorf("Error: unknown flags: %v\n", flag.Args())
+		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
 
 	if pollInterval == 0 {
