@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/JSchatten/go-practice-metrics/internal/config"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/go-resty/resty/v2"
@@ -115,7 +116,7 @@ func sendMetrics(serverAdress string, memStorage *storage.MemStorage) error {
 }
 
 // Функция для обновления метрик из runtime
-func UpdateRuntimeMetrics(cfg flags, storage *storage.MemStorage, done <-chan struct{}) {
+func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, done <-chan struct{}) {
 	tickerCollect := time.NewTicker(cfg.PollInterval)
 	tickerSend := time.NewTicker(cfg.ReportInterval)
 	defer tickerCollect.Stop()

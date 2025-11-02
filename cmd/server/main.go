@@ -1,23 +1,21 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
+	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
-var address string
-
 func main() {
-	flag.StringVar(&address, "a", "localhost:8080", "Server address (default: localhost:8080)")
-	flag.Parse()
 
-	if flag.NArg() > 0 {
-		fmt.Fprintf(os.Stderr, "Error: unknown flags: %v\n", flag.Args())
+	cfg, err := config.InitServerFlags()
+
+	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
@@ -28,6 +26,6 @@ func main() {
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
-	fmt.Printf("Server started at %s\n", address)
-	router.Run(address)
+	fmt.Printf("Server started at %s\n", cfg.ServerAddr)
+	router.Run(cfg.ServerAddr)
 }

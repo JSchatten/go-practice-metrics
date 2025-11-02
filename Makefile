@@ -10,7 +10,7 @@ build_server:
 build_agent:
 	rm -rf $(build_agent_out)
 	mkdir -p $(build_agent_out)
-	go build -o $(build_agent_out)/server ./cmd/server/main.go
+	go build -o $(build_agent_out)/agent ./cmd/agent/main.go
 
 run_server:
 	go run cmd/server/main.go
@@ -19,13 +19,13 @@ run_agent:
 	go run cmd/agent/main.go
 
 test_server:
-	./metricstest  -test.v -test.run=^TestIteration1$ -server-binary-path=./build/server_out/server
+	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/server_out/server
 
 test_server_local:
 	go test ./internal/handler/.
 
 test_agent:
-	./metricstest  -test.v -test.run=^TestIteration1$ -server-binary-path=./build/server_out/server
+	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/agent_out/agent
 
 server_build_test: build_server test_server
 	@echo "Full run for server finished"
