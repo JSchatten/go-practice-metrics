@@ -18,7 +18,7 @@ type ServerFlags struct {
 	ServerAddr string
 }
 
-func getEnv(key string, defaultVal string) string {
+func getEnvStr(key string, defaultVal string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
@@ -35,7 +35,7 @@ func getEnvInt(key string, defaultVal int) int {
 }
 
 func InitServerFlags() (*ServerFlags, error) {
-	var serverAddr = getEnv("ADDRESS", "")
+	var serverAddr = getEnvStr("ADDRESS", "")
 
 	if serverAddr == "" {
 		flag.StringVar(&serverAddr, "a", "localhost:8080", "Server address (default: localhost:8080)")
@@ -52,7 +52,7 @@ func InitServerFlags() (*ServerFlags, error) {
 func InitAgentFlags() (*AgentFlags, error) {
 	var reportInterval = getEnvInt("REPORT_INTERVAL", 0)
 	var pollInterval = getEnvInt("POLL_INTERVAL", 0)
-	var serverAddr = getEnv("ADDRESS", "")
+	var serverAddr = getEnvStr("ADDRESS", "")
 
 	if pollInterval == 0 {
 		flag.IntVar(&pollInterval, "p", 2, "Poll interval in seconds (default: 2)")

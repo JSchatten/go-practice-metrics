@@ -21,14 +21,12 @@ run_agent:
 test_server:
 	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/server_out/server
 
-test_server_local:
+test_local:
 	go test ./internal/handler/.
+	go test ./internal/config/.
 
 test_agent:
 	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/agent_out/agent
 
-server_build_test: build_server test_server
-	@echo "Full run for server finished"
-
-agent_build_test: build_agent test_agent
-	@echo "Full run for agent finished"
+build_test_local_all: build_server build_agent test_local
+	@echo "Full run build and test for server finished"
