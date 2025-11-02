@@ -2,12 +2,17 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
+	middleware "github.com/JSchatten/go-practice-metrics/internal/logging"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	logZero "github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -19,13 +24,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
+
 	storageObj := storage.NewMemStorage()
-	router := gin.Default()
+
+	gin.DefaultWriter = io.Discard
+	router := gin.New()
+	router.Use(middleware.LoggingMiddleware(logZero.Logger))
 
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
-	fmt.Printf("Server started at %s\n", cfg.ServerAddr)
+	logZero.Logger.Info().Msgf("Server started at %s\n", cfg.ServerAddr)
 	router.Run(cfg.ServerAddr)
 }
