@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UpdateHandlerJson(storage storage.Storage) gin.HandlerFunc {
+func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var metricIn model.RequestMetrics
 

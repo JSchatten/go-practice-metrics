@@ -35,8 +35,8 @@ func main() {
 
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
-	router.POST("/update", handlers.UpdateHandlerJson(storageObj))
-	router.POST("/value", handlers.ValueHandlerJson(storageObj))
+	router.POST("/update", handlers.UpdateHandlerJSON(storageObj))
+	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
 	logZero.Logger.Info().Msgf("Server started at %s\n", cfg.ServerAddr)
