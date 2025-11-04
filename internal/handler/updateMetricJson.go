@@ -7,10 +7,12 @@ import (
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	logZero "github.com/rs/zerolog/log"
 )
 
 func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logZero.Logger.Info().Msg("UpdateHandlerJSON")
 		var metricIn model.RequestMetrics
 
 		if c.Request.Method != http.MethodPost {

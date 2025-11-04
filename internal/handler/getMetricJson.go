@@ -7,10 +7,12 @@ import (
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	logZero "github.com/rs/zerolog/log"
 )
 
 func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logZero.Logger.Info().Msg("ValueHandlerJSON")
 		var metricIn model.RequestMetrics
 
 		// Это по-хорошему, т.к. есть sonic-avx, для build-тегов, но требования такие

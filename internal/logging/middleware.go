@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// LoggingMiddleware возвращает Gin-мидлвару для логирования запросов и ответов
 func LoggingMiddleware(logger zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 

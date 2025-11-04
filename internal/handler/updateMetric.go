@@ -7,11 +7,14 @@ import (
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	logZero "github.com/rs/zerolog/log"
 )
 
 // Обработчик HTTP-запросов
 func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logZero.Logger.Info().Msg("UpdateHandler")
+
 		if c.Request.Method != http.MethodPost {
 			methodNotAllowed(c)
 			return
