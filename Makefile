@@ -19,7 +19,7 @@ run_agent:
 	go run cmd/agent/main.go
 
 test_server:
-	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/server_out/server
+	./metricstest  -test.v -test.run=^TestIteration6$ -server-binary-path=./build/server_out/server
 
 test_local:
 	go test ./internal/handler/.
