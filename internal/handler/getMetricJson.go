@@ -19,22 +19,13 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		// 	return
 		// }
 
-		// На случай тестов
-		// contentType := c.Request.Header.Get("Content-Type")
-		// if contentType != "application/json" && contentType != "application/json; charset=utf-8" {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "content-type must be application/json"})
-		// 	return
-		// }
-
 		decoder := json.NewDecoder(c.Request.Body)
 		if err := decoder.Decode(&metricIn); err != nil {
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
 			bodyInvalidJSON(c)
 			return
 		}
 
 		if metricIn.ID == "" || metricIn.MType == "" {
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: id or type"})
 			bodyMissingFields(c)
 			return
 		}
@@ -43,7 +34,6 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		case "gauge", "counter":
 			// ок
 		default:
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type: must be 'gauge' or 'counter'"})
 			bodyInvalidMetricType(c)
 			return
 		}
@@ -51,7 +41,6 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		metric := storage.GetMetric(metricIn.ID)
 
 		if metric.MType != metricIn.MType {
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "Metric type mismatch"})
 			invalidMetricTypeMissmatch(c)
 			return
 		}

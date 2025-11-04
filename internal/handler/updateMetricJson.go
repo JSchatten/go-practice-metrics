@@ -24,22 +24,13 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		// 	return
 		// }
 
-		// На случай тестов
-		// contentType := c.Request.Header.Get("Content-Type")
-		// if contentType != "application/json" && contentType != "application/json; charset=utf-8" {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "content-type must be application/json"})
-		// 	return
-		// }
-
 		decoder := json.NewDecoder(c.Request.Body)
 		if err := decoder.Decode(&metricIn); err != nil {
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
 			bodyInvalidJSON(c)
 			return
 		}
 
 		if metricIn.ID == "" || metricIn.MType == "" {
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: id or type"})
 			bodyMissingFields(c)
 			return
 		}
@@ -47,18 +38,15 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		switch metricIn.MType {
 		case "counter":
 			if metricIn.Delta == nil {
-				// c.JSON(http.StatusBadRequest, gin.H{"error": "Missing delta for counter"})
 				deltaNotProvided(c)
 				return
 			}
 		case "gauge":
 			if metricIn.Value == nil {
-				// c.JSON(http.StatusBadRequest, gin.H{"error": "Missing value for gauge"})
 				valueNotProvided(c)
 				return
 			}
 		default:
-			// c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid metric type: must be 'gauge' or 'counter'"})
 			bodyInvalidMetricType(c)
 			return
 		}
@@ -72,7 +60,6 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 
 		err := storage.UpdateMetric(&metricOut)
 		if err != nil {
-			// c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update metric"})
 			failedToUpdateMetric(c, err)
 			return
 		}
