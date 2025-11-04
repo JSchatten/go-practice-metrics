@@ -8,15 +8,19 @@ import (
 )
 
 const (
-	ErrBadRequest           = "Bad request"
-	ErrMethodNotAllowed     = "Method not allowed"
-	ErrMissingParameters    = "Missing required parameters"
-	ErrInvalidValueFormat   = "Invalid value format"
-	ErrUnknownMetricType    = "Unknown metric type"
-	ErrMetricNotFound       = "Metric not found"
-	ErrValueNotProvided     = "Value is missing for gauge"
-	ErrDeltaNotProvided     = "Delta is missing for counter"
-	ErrFailedToUpdateMetric = "Failed to update metric"
+	ErrBadRequest            = "Bad request"
+	ErrMethodNotAllowed      = "Method not allowed"
+	ErrMissingParameters     = "Missing required parameters"
+	ErrInvalidValueFormat    = "Invalid value format"
+	ErrUnknownMetricType     = "Unknown metric type"
+	ErrMetricNotFound        = "Metric not found"
+	ErrValueNotProvided      = "Value is missing for gauge"
+	ErrDeltaNotProvided      = "Delta is missing for counter"
+	ErrFailedToUpdateMetric  = "Failed to update metric"
+	ErrInvalidJSON           = "Invalid JSON"
+	ErrMissingRequiredFields = "Missing required fields: id or type"
+	ErrInvalidMetricType     = "Invalid metric type: must be 'gauge' or 'counter'"
+	ErrMetricTypeMissmatch   = "Metric type mismatch"
 )
 
 // Универсальная функция
@@ -25,6 +29,22 @@ func abortWithError(c *gin.Context, status int, message string) {
 }
 
 // для часто используемых ошибок
+func invalidMetricTypeMissmatch(c *gin.Context) {
+	abortWithError(c, http.StatusBadRequest, ErrMetricTypeMissmatch)
+}
+
+func bodyInvalidMetricType(c *gin.Context) {
+	abortWithError(c, http.StatusBadRequest, ErrInvalidMetricType)
+}
+
+func bodyMissingFields(c *gin.Context) {
+	abortWithError(c, http.StatusBadRequest, ErrMissingRequiredFields)
+}
+
+func bodyInvalidJSON(c *gin.Context) {
+	abortWithError(c, http.StatusBadRequest, ErrInvalidJSON)
+}
+
 func methodNotAllowed(c *gin.Context) {
 	abortWithError(c, http.StatusBadRequest, ErrMethodNotAllowed)
 }
