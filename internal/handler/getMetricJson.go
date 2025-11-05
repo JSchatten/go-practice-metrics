@@ -41,6 +41,10 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		}
 
 		metric := storage.GetMetric(metricIn.ID)
+		if metric == nil {
+			metricNotFound(c)
+			return
+		}
 
 		if metric.MType != metricIn.MType {
 			invalidMetricTypeMissmatch(c)
