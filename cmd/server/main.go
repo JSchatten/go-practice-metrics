@@ -9,7 +9,7 @@ import (
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 
-	// gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
+	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
@@ -33,11 +33,10 @@ func main() {
 
 	gin.DefaultWriter = io.Discard
 	router := gin.New()
+	// middleware
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
-	// router.Use(gzipMiddleaware.GzipMiddleware())
-	// router.Use(gzipMiddleaware.Gzip(1))
-	// router.Use(gzip.Gzip(gzip.DefaultCompression))
-
+	router.Use(gzipMiddleaware.GzipMiddleware())
+	// routes
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
 	router.POST("/update", handlers.UpdateHandlerJSON(storageObj))

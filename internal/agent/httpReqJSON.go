@@ -48,9 +48,17 @@ func sendMetricsJSON(serverAddr string, memStorage *storage.MemStorage) error {
 			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 
+		compressed, err := CompressGZIP(jsonData)
+		if err != nil {
+			return fmt.Errorf("failed to compress metric %s: %w", metric.ID, err)
+		}
+
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
-			SetBody(jsonData).
+			// SetBody(jsonData).
+			SetHeader("Content-Encoding", "gzip").
+			SetHeader("Accept-Encoding", "gzip").
+			SetBody(compressed).
 			Post(fmt.Sprintf("http://%s/update/", serverAddr))
 
 		if err != nil {
