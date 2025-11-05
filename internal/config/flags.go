@@ -54,22 +54,22 @@ func getEnvInt(key string, defaultVal int) int {
 
 func InitServerFlags() (*ServerFlags, error) {
 	var serverAddr = getEnvStr("ADDRESS", "")
-	var file_storage_path = getEnvStr("FILE_STORAGE_PATH", "")
-	var store_interval_sec = getEnvInt("STORE_INTERVAL", 0)
-	var restore_from_file = getEnvBool("RESTORE", false)
+	var fileStoragePath = getEnvStr("FILE_STORAGE_PATH", "")
+	var storeIntervalSec = getEnvInt("STORE_INTERVAL", 0)
+	var restoreFromFile = getEnvBool("RESTORE", false)
 
 	if serverAddr == "" {
 		flag.StringVar(&serverAddr, "a", "localhost:8080", "Server address (default: localhost:8080)")
 	}
-	if store_interval_sec == 0 {
-		flag.IntVar(&store_interval_sec, "i", 300, "File path for writeing metrics into file")
+	if storeIntervalSec == 0 {
+		flag.IntVar(&storeIntervalSec, "i", 300, "File path for writeing metrics into file")
 	}
-	if file_storage_path == "" {
-		flag.StringVar(&file_storage_path, "f", "metrics.json", "File path for writeing metrics into file")
+	if fileStoragePath == "" {
+		flag.StringVar(&fileStoragePath, "f", "metrics.json", "File path for writeing metrics into file")
 	}
-	if restore_from_file == false {
+	if !restoreFromFile {
 		// Таки включим по умолчанию попытку чтения из файла
-		flag.BoolVar(&restore_from_file, "r", true, "File path for writeing metrics into file")
+		flag.BoolVar(&restoreFromFile, "r", true, "File path for writeing metrics into file")
 	}
 	flag.Parse()
 	if flag.NArg() > 0 {
@@ -77,9 +77,9 @@ func InitServerFlags() (*ServerFlags, error) {
 	}
 	return &ServerFlags{
 		ServerAddr:    serverAddr,
-		FilePath:      file_storage_path,
-		FileIsRestore: restore_from_file,
-		FileInterval:  time.Duration(store_interval_sec) * time.Second,
+		FilePath:      fileStoragePath,
+		FileIsRestore: restoreFromFile,
+		FileInterval:  time.Duration(storeIntervalSec) * time.Second,
 	}, nil
 }
 
