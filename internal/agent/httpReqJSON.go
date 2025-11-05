@@ -10,7 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func sendMetricsJson(serverAddr string, memStorage *storage.MemStorage) error {
+func sendMetricsJSON(serverAddr string, memStorage *storage.MemStorage) error {
 	client := resty.New()
 
 	for _, metric := range memStorage.Metrics {
