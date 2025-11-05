@@ -32,3 +32,6 @@ build/
 
 # Air
 tmp/
+
+# debug metrics.json
+metrics.json

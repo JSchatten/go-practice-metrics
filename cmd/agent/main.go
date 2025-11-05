@@ -24,7 +24,7 @@ func main() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	storage := storage.NewMemStorage()
+	storage := storage.NewMemStorage(os.DevNull, 0, false)
 	done := make(chan struct{})
 
 	sigChan := make(chan os.Signal, 1)

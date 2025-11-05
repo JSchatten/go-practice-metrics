@@ -3,6 +3,7 @@ package handler_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/JSchatten/go-practice-metrics/internal/handler"
@@ -60,7 +61,7 @@ func TestUpdateHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаем инстанс Gin и регистрируем обработчик
 			r := gin.Default()
-			r.POST("/update/:type/:name/:value", handler.UpdateHandler(storageService.NewMemStorage()))
+			r.POST("/update/:type/:name/:value", handler.UpdateHandler(storageService.NewMemStorage(os.DevNull, 0, false)))
 
 			// Создаем запрос
 			req, _ := http.NewRequest(tt.method, tt.url, nil)

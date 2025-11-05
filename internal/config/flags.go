@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -15,12 +16,29 @@ type AgentFlags struct {
 }
 
 type ServerFlags struct {
-	ServerAddr string
+	ServerAddr    string
+	FilePath      string
+	FileInterval  time.Duration
+	FileIsRestore bool
 }
 
 func getEnvStr(key string, defaultVal string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
+	}
+	return defaultVal
+}
+
+func getEnvBool(key string, defaultVal bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		value = strings.TrimSpace(value)
+		switch strings.ToLower(value) {
+		case "1", "t", "true":
+			return true
+		// Пусть пустое значение = false, т.к. не указано явно
+		case "0", "f", "false", "":
+			return false
+		}
 	}
 	return defaultVal
 }
@@ -36,16 +54,32 @@ func getEnvInt(key string, defaultVal int) int {
 
 func InitServerFlags() (*ServerFlags, error) {
 	var serverAddr = getEnvStr("ADDRESS", "")
+	var file_storage_path = getEnvStr("FILE_STORAGE_PATH", "")
+	var store_interval_sec = getEnvInt("STORE_INTERVAL", 0)
+	var restore_from_file = getEnvBool("RESTORE", false)
 
 	if serverAddr == "" {
 		flag.StringVar(&serverAddr, "a", "localhost:8080", "Server address (default: localhost:8080)")
+	}
+	if store_interval_sec == 0 {
+		flag.IntVar(&store_interval_sec, "i", 300, "File path for writeing metrics into file")
+	}
+	if file_storage_path == "" {
+		flag.StringVar(&file_storage_path, "f", "metrics.json", "File path for writeing metrics into file")
+	}
+	if restore_from_file == false {
+		// Таки включим по умолчанию попытку чтения из файла
+		flag.BoolVar(&restore_from_file, "r", true, "File path for writeing metrics into file")
 	}
 	flag.Parse()
 	if flag.NArg() > 0 {
 		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
 	return &ServerFlags{
-		ServerAddr: serverAddr,
+		ServerAddr:    serverAddr,
+		FilePath:      file_storage_path,
+		FileIsRestore: restore_from_file,
+		FileInterval:  time.Duration(store_interval_sec) * time.Second,
 	}, nil
 }
 

@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	filerepo "github.com/JSchatten/go-practice-metrics/internal/repository"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
+	"github.com/rs/zerolog/log"
 )
 
 type MemStorage struct {
-	Metrics map[string]*model.Metrics
-	mx      sync.RWMutex // Мютекс Rw, для параллельнго чтения
+	Metrics      map[string]*model.Metrics
+	mxDataAccess sync.RWMutex // Мютекс Rw, для параллельнго чтения
+	fileRepo     *filerepo.FileRepository
 }
 
 type Storage interface {
@@ -19,15 +24,80 @@ type Storage interface {
 	String() string
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{
-		Metrics: make(map[string]*model.Metrics),
+func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool) *MemStorage {
+
+	var fileRepo *filerepo.FileRepository
+	if filePath != "" {
+		fileRepo = filerepo.NewFileRepository(filePath)
+	}
+
+	storage := &MemStorage{
+		Metrics:  make(map[string]*model.Metrics),
+		fileRepo: fileRepo,
+	}
+
+	if loadFromFile {
+		storage.loadFromDisk()
+	}
+
+	if fileRepo != nil {
+		if loadFromFile {
+			storage.loadFromDisk()
+		}
+		go storage.startAutoSave(filePath, flushInterval)
+	} else {
+		log.Logger.Warn().Msgf("Warning: no filepath for load data\n")
+	}
+	return storage
+}
+
+func (s *MemStorage) loadFromDisk() {
+	metrics, err := s.fileRepo.LoadMetrics()
+	if err != nil {
+		log.Logger.Warn().Msgf("Warning: failed to load metrics from file: %v\n", err)
+		return
+	}
+
+	s.mxDataAccess.Lock()
+	defer s.mxDataAccess.Unlock()
+	s.Metrics = metrics
+}
+
+func (s *MemStorage) startAutoSave(filepath string, interval time.Duration) {
+	if interval <= 0 {
+		log.Logger.Info().Msg("Ignore interval")
+		return
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	log.Logger.Info().Msg("Starting auto-save")
+
+	for range ticker.C {
+		if err := s.SaveToFile(filepath); err != nil {
+			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file: %v\n", err)
+		}
 	}
 }
 
+func (s *MemStorage) SaveToFile(filepath string) error {
+	s.mxDataAccess.RLock()
+	defer s.mxDataAccess.RUnlock()
+
+	if s.fileRepo != nil {
+		if err := s.fileRepo.SaveMetrics(s.Metrics); err != nil {
+			fmt.Printf("Failed to save metrics to file: %v\n", err)
+		}
+	} else {
+		log.Logger.Info().Msgf("Ignore save to file, because file path is empty")
+	}
+
+	return nil
+}
+
 func (s *MemStorage) String() string {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
+	s.mxDataAccess.RLock()
+	defer s.mxDataAccess.RUnlock()
 
 	if len(s.Metrics) == 0 {
 		return ""
@@ -48,8 +118,8 @@ func (s *MemStorage) String() string {
 }
 
 func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
-	s.mx.Lock()
-	defer s.mx.Unlock()
+	s.mxDataAccess.Lock()
+	defer s.mxDataAccess.Unlock()
 
 	switch metric.MType {
 	case model.Gauge:
@@ -89,8 +159,8 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 }
 
 func (s *MemStorage) GetMetric(id string) *model.Metrics {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
+	s.mxDataAccess.RLock()
+	defer s.mxDataAccess.RUnlock()
 	if metric, exists := s.Metrics[id]; exists {
 		return metric
 	} else {

@@ -29,7 +29,7 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
-	storageObj := storage.NewMemStorage()
+	storageObj := storage.NewMemStorage(cfg.FilePath, cfg.FileInterval, cfg.FileIsRestore)
 
 	gin.DefaultWriter = io.Discard
 	router := gin.New()
@@ -43,6 +43,6 @@ func main() {
 	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
-	logZero.Logger.Info().Msgf("Server started at %s\n", cfg.ServerAddr)
+	logZero.Logger.Info().Msgf("Server started at %s", cfg.ServerAddr)
 	router.Run(cfg.ServerAddr)
 }
