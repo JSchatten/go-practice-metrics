@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
@@ -43,6 +48,42 @@ func main() {
 	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
-	logZero.Logger.Info().Msgf("Server started at %s", cfg.ServerAddr)
-	router.Run(cfg.ServerAddr)
+	// Запуск сервера в отдельной горутине
+	srv := &http.Server{
+		Addr:    cfg.ServerAddr,
+		Handler: router,
+	}
+	go func() {
+		logZero.Logger.Info().Msgf("Server starting at %s", cfg.ServerAddr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logZero.Logger.Fatal().Err(err).Msg("Server failed to start")
+		}
+	}()
+
+	// Перехват сигналов завершения
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logZero.Logger.Info().Msg("Shutting down server...")
+
+	// Контекст для graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Останавливаем сервер
+	if err := srv.Shutdown(ctx); err != nil {
+		logZero.Logger.Fatal().Err(err).Msg("Server forced to shutdown")
+	}
+
+	// Сохраняем данные ПОСЛЕ остановки сервера
+	logZero.Logger.Info().Msg("Saving metrics to file before exit...")
+	if err := storageObj.SaveToFile(); err != nil {
+		logZero.Logger.Error().Err(err).Msg("Failed to save metrics on exit")
+	} else {
+		logZero.Logger.Info().Msg("Metrics saved successfully")
+	}
+
+	logZero.Logger.Info().Msg("Server exited gracefully")
+
 }

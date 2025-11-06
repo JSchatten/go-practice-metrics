@@ -2,7 +2,6 @@ package repository
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"sync"
 
@@ -36,10 +35,14 @@ func (r *FileRepository) SaveMetrics(metrics map[string]*model.Metrics) error {
 
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal metrics: %w", err)
+		return NewErrMarshal(err)
 	}
 
-	return os.WriteFile(r.filePath, data, 0600)
+	if err := os.WriteFile(r.filePath, data, 0600); err != nil {
+		return NewErrWriteFile(r.filePath, err)
+	}
+
+	return nil
 }
 
 func (r *FileRepository) LoadMetrics() (map[string]*model.Metrics, error) {
@@ -55,12 +58,12 @@ func (r *FileRepository) LoadMetrics() (map[string]*model.Metrics, error) {
 		if os.IsNotExist(err) {
 			return make(map[string]*model.Metrics), nil
 		}
-		return nil, fmt.Errorf("failed to read metrics file: %w", err)
+		return nil, NewErrReadFile(r.filePath, err)
 	}
 
 	var metrics []model.Metrics
 	if err := json.Unmarshal(data, &metrics); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal metrics: %w", err)
+		return nil, NewErrUnmarshal(r.filePath, err)
 	}
 
 	result := make(map[string]*model.Metrics)

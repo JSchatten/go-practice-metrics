@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -13,9 +12,10 @@ import (
 )
 
 type MemStorage struct {
-	Metrics      map[string]*model.Metrics
-	mxDataAccess sync.RWMutex // Мютекс Rw, для параллельнго чтения
-	fileRepo     *filerepo.FileRepository
+	Metrics          map[string]*model.Metrics
+	mxDataAccess     sync.RWMutex // Мютекс Rw, для параллельнго чтения
+	fileRepo         *filerepo.FileRepository
+	immediatelyFlush bool
 }
 
 type Storage interface {
@@ -36,17 +36,17 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 		fileRepo: fileRepo,
 	}
 
-	if loadFromFile {
-		storage.loadFromDisk()
-	}
-
 	if fileRepo != nil {
 		if loadFromFile {
 			storage.loadFromDisk()
 		}
-		go storage.startAutoSave(filePath, flushInterval)
+		if flushInterval > 0 {
+			go storage.startAutoSave(flushInterval)
+		} else {
+			storage.immediatelyFlush = true
+		}
 	} else {
-		log.Logger.Warn().Msgf("Warning: no filepath for load data\n")
+		log.Logger.Warn().Msgf("No filepath for load data")
 	}
 	return storage
 }
@@ -54,7 +54,7 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 func (s *MemStorage) loadFromDisk() {
 	metrics, err := s.fileRepo.LoadMetrics()
 	if err != nil {
-		log.Logger.Warn().Msgf("Warning: failed to load metrics from file: %v\n", err)
+		log.Logger.Warn().Err(err).Msg("Failed to load metrics from file")
 		return
 	}
 
@@ -63,9 +63,9 @@ func (s *MemStorage) loadFromDisk() {
 	s.Metrics = metrics
 }
 
-func (s *MemStorage) startAutoSave(filepath string, interval time.Duration) {
+func (s *MemStorage) startAutoSave(interval time.Duration) {
 	if interval <= 0 {
-		log.Logger.Info().Msg("Ignore interval")
+		log.Logger.Info().Msg("Ignore interval less than 0, gorutine was stopped")
 		return
 	}
 	ticker := time.NewTicker(interval)
@@ -74,22 +74,27 @@ func (s *MemStorage) startAutoSave(filepath string, interval time.Duration) {
 	log.Logger.Info().Msg("Starting auto-save")
 
 	for range ticker.C {
-		if err := s.SaveToFile(filepath); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file: %v\n", err)
+		if err := s.SaveToFile(); err != nil {
+			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
 		}
 	}
 }
 
-func (s *MemStorage) SaveToFile(filepath string) error {
-	s.mxDataAccess.RLock()
-	defer s.mxDataAccess.RUnlock()
+func (s *MemStorage) SaveToFile() error {
+	// Потенциальный дедлок
+	// if s.mxDataAccess.TryLock() {
+	// 	defer s.mxDataAccess.RUnlock()
+	// }
+	// Потенциальный дедлок
+	// s.mxDataAccess.RLock()
+	// defer s.mxDataAccess.RUnlock()
 
-	if s.fileRepo != nil {
-		if err := s.fileRepo.SaveMetrics(s.Metrics); err != nil {
-			fmt.Printf("Failed to save metrics to file: %v\n", err)
-		}
-	} else {
-		log.Logger.Info().Msgf("Ignore save to file, because file path is empty")
+	if s.fileRepo == nil {
+		return nil
+	}
+
+	if err := s.fileRepo.SaveMetrics(s.Metrics); err != nil {
+		return NewErrSaveToFile(err)
 	}
 
 	return nil
@@ -101,20 +106,19 @@ func (s *MemStorage) String() string {
 
 	if len(s.Metrics) == 0 {
 		return ""
-	} else {
-		var metrics = []model.Metrics{}
-
-		for _, metric := range s.Metrics {
-			metrics = append(metrics, *metric)
-		}
-
-		metricsStr, err := json.Marshal(metrics)
-		if err != nil {
-			panic(err)
-		} else {
-			return string(metricsStr)
-		}
 	}
+
+	var metrics = []model.Metrics{}
+	for _, metric := range s.Metrics {
+		metrics = append(metrics, *metric)
+	}
+	metricsStr, err := json.Marshal(metrics)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("Failed to marshal metrics in String()")
+		panic(NewErrMarshal(err))
+	}
+
+	return string(metricsStr)
 }
 
 func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
@@ -124,7 +128,7 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 	switch metric.MType {
 	case model.Gauge:
 		if metric.Value == nil {
-			return fmt.Errorf("value is required for gauge")
+			return ErrValueRequired
 		}
 		s.Metrics[metric.ID] = &model.Metrics{
 			ID:    metric.ID,
@@ -133,7 +137,7 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 		}
 	case model.Counter:
 		if metric.Delta == nil {
-			return fmt.Errorf("delta is required for counter")
+			return ErrDeltaRequired
 		}
 		existing, exists := s.Metrics[metric.ID]
 		if exists && existing.MType == model.Counter {
@@ -153,7 +157,12 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 			}
 		}
 	default:
-		return fmt.Errorf("unknown metric type: %s", metric.MType)
+		return NewErrUnknownMetricType(string(metric.MType))
+	}
+	if s.immediatelyFlush {
+		if err := s.SaveToFile(); err != nil {
+			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
+		}
 	}
 	return nil
 }
