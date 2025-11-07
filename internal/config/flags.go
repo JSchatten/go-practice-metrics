@@ -28,18 +28,16 @@ type AgentFlags struct {
 }
 
 type ServerFlags struct {
-	ServerAddr    string
+	ServerAddr      string
+	ServerFileFlags ServerFileFlags
+}
+
+// TODO Вынести флаги для работы с файлом
+type ServerFileFlags struct {
 	FilePath      string
 	FileInterval  time.Duration
 	FileIsRestore bool
 }
-
-// TODO Вынести флаги для работы с файлом
-// type ServerFileFlags struct {
-// 	FilePath      string
-// 	FileInterval  time.Duration
-// 	FileIsRestore bool
-// }
 
 func InitAgentFlags() (*AgentFlags, error) {
 	var (
@@ -147,10 +145,14 @@ func InitServerFlags() (*ServerFlags, error) {
 
 	}
 
-	return &ServerFlags{
-		ServerAddr:    *serverAddr,
-		FilePath:      *filePath,
-		FileInterval:  time.Duration(*fileIntervalSec) * time.Second,
-		FileIsRestore: *restoreFromFile,
-	}, nil
+	var result = &ServerFlags{
+		ServerAddr: *serverAddr,
+		ServerFileFlags: ServerFileFlags{
+			FilePath:      *filePath,
+			FileInterval:  time.Duration(*fileIntervalSec) * time.Second,
+			FileIsRestore: *restoreFromFile,
+		},
+	}
+
+	return result, nil
 }

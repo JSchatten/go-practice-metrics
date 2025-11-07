@@ -34,7 +34,11 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
-	storageObj := storage.NewMemStorage(cfg.FilePath, cfg.FileInterval, cfg.FileIsRestore)
+	storageObj := storage.NewMemStorage(
+		cfg.ServerFileFlags.FilePath,
+		cfg.ServerFileFlags.FileInterval,
+		cfg.ServerFileFlags.FileIsRestore,
+	)
 
 	gin.DefaultWriter = io.Discard
 	router := gin.New()
