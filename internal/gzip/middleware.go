@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GzipMiddleware возвращает Gin middleware для обработки сжатия
 func GzipMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -33,6 +32,7 @@ func GzipMiddleware() gin.HandlerFunc {
 		c.Writer = gw
 
 		contentType := c.Writer.Header().Get("Content-Type")
+
 		if shouldCompressContentType(contentType) {
 			c.Writer.Header().Set("Content-Encoding", "gzip")
 			c.Writer.Header().Set("Vary", "Accept-Encoding")
@@ -60,13 +60,59 @@ func acceptsGzip(r *http.Request) bool {
 	return false
 }
 
+var noCompressMIME = map[string]bool{
+	"image/png":                true,
+	"image/jpeg":               true,
+	"image/gif":                true,
+	"audio/mpeg":               true,
+	"video/mp4":                true,
+	"font/woff":                true,
+	"font/woff2":               true,
+	"application/pdf":          true,
+	"application/zip":          true,
+	"application/gzip":         true,
+	"application/x-tar":        true,
+	"application/x-rar":        true,
+	"application/octet-stream": true,
+	"application/protobuf":     true,
+	"application/msgpack":      true,
+}
+
 // shouldCompressContentType определяет, стоит ли сжимать контент
+// func shouldCompressContentType(contentType string) bool {
+// 	if contentType == "" {
+// 		return true // по умолчанию сжимаем
+// 	}
+// 	return strings.HasPrefix(contentType, "text/") ||
+// 		strings.Contains(contentType, "application/json") ||
+// 		strings.Contains(contentType, "application/xml") ||
+// 		strings.Contains(contentType, "application/javascript")
+// }
+
 func shouldCompressContentType(contentType string) bool {
 	if contentType == "" {
-		return true // по умолчанию сжимаем
+		return true
 	}
-	return strings.HasPrefix(contentType, "text/") ||
-		strings.Contains(contentType, "application/json") ||
-		strings.Contains(contentType, "application/xml") ||
-		strings.Contains(contentType, "application/javascript")
+
+	// Убираем параметры (например, ;charset=utf-8)
+	if i := strings.Index(contentType, ";"); i >= 0 {
+		contentType = contentType[:i]
+	}
+	contentType = strings.TrimSpace(contentType)
+
+	if noCompressMIME[strings.ToLower(contentType)] {
+		return false
+	}
+
+	// Проверяем префиксы
+	lower := strings.ToLower(contentType)
+	if strings.HasPrefix(lower, "text/") ||
+		strings.Contains(lower, "json") ||
+		strings.Contains(lower, "xml") ||
+		strings.Contains(lower, "javascript") {
+
+		return true
+	}
+
+	return false
 }
