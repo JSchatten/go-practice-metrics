@@ -67,6 +67,9 @@ func NewMetrics(id, mType, valueStr string) (*Metrics, error) {
 
 // Validate checks if the Metrics instance is valid.
 func (m *Metrics) Validate() error {
+	if m == nil {
+		return ErrNilMetric
+	}
 	if m.ID == "" {
 		return ErrEmptyMetricID
 	}

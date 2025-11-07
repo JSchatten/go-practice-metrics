@@ -10,4 +10,5 @@ var (
 	ErrDeltaRequired       = fmt.Errorf("delta is required for counter")
 	ErrInvalidCounterValue = fmt.Errorf("invalid counter value")
 	ErrInvalidGaugeValue   = fmt.Errorf("invalid gauge value")
+	ErrNilMetric           = fmt.Errorf("metric is nil")
 )

@@ -29,3 +29,8 @@ test_agent:
 
 build_test_local_all: build_server build_agent test_local
 	@echo "Full run build and test for server finished"
+
+test_coverage:
+	go test ./... -coverprofile=c.out
+	go tool cover -func=c.out
+	go tool cover -html=c.out -o=./coverage.html

@@ -34,7 +34,7 @@ func sendMetricsJSON(serverAddr string, memStorage *storage.MemStorage) error {
 			return fmt.Errorf("unsupported metric type: %s", metricType)
 		}
 
-		requestMetric := Metrics{
+		requestMetric := MetricsModel.Metrics{
 			ID:    metric.ID,
 			MType: string(metric.MType),
 			Delta: metric.Delta,
