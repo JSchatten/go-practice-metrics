@@ -24,7 +24,7 @@ type Storage interface {
 	String() string
 }
 
-func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool) *MemStorage {
+func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool) (*MemStorage, error) {
 
 	var fileRepo *filerepo.FileRepository
 	if filePath != "" {
@@ -38,7 +38,10 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 
 	if fileRepo != nil {
 		if loadFromFile {
-			storage.loadFromDisk()
+			err := storage.loadFromDisk()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if flushInterval > 0 {
 			go storage.startAutoSave(flushInterval)
@@ -48,19 +51,20 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 	} else {
 		log.Logger.Warn().Msgf("No filepath for load data")
 	}
-	return storage
+	return storage, nil
 }
 
-func (s *MemStorage) loadFromDisk() {
+func (s *MemStorage) loadFromDisk() error {
 	metrics, err := s.fileRepo.LoadMetrics()
 	if err != nil {
-		log.Logger.Warn().Err(err).Msg("Failed to load metrics from file")
-		return
+		log.Logger.Error().Err(err).Msg("Failed to load metrics from file")
+		return err
 	}
 
 	s.mxDataAccess.Lock()
 	defer s.mxDataAccess.Unlock()
 	s.Metrics = metrics
+	return nil
 }
 
 func (s *MemStorage) startAutoSave(interval time.Duration) {

@@ -8,7 +8,7 @@ var (
 	ErrWriteFile     = fmt.Errorf("failed to write metrics file")
 	ErrUnmarshal     = fmt.Errorf("failed to unmarshal metrics from file")
 	ErrMarshal       = fmt.Errorf("failed to marshal metrics")
-	ErrNoData        = fmt.Errorf("No data provided for saving into file")
+	ErrNoData        = fmt.Errorf("no data provided for saving into file")
 )
 
 // Форматированные ошибки

@@ -34,11 +34,17 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
-	storageObj := storage.NewMemStorage(
+	storageObj, err := storage.NewMemStorage(
 		cfg.ServerFileFlags.FilePath,
 		cfg.ServerFileFlags.FileInterval,
 		cfg.ServerFileFlags.FileIsRestore,
 	)
+
+	if err != nil {
+		logZero.Logger.Fatal().Err(err).Msg(
+			"Failed to create storage",
+		)
+	}
 
 	gin.DefaultWriter = io.Discard
 	router := gin.New()
