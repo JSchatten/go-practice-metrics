@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
@@ -28,33 +27,46 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		var metric *model.Metrics
+		// var metric *model.Metrics
 
-		switch metricType {
-		case model.Gauge:
-			valueFloat, err := strconv.ParseFloat(valueStr, 64)
-			if err != nil {
+		// switch metricType {
+		// case model.Gauge:
+		// 	valueFloat, err := strconv.ParseFloat(valueStr, 64)
+		// 	if err != nil {
+		// 		invalidValueFormat(c, err)
+		// 		return
+		// 	}
+		// 	metric = &model.Metrics{
+		// 		ID:    metricName,
+		// 		MType: model.Gauge,
+		// 		Value: &valueFloat,
+		// 	}
+		// case model.Counter:
+		// 	valueInt, err := strconv.ParseInt(valueStr, 10, 64)
+		// 	if err != nil {
+		// 		invalidValueFormat(c, err)
+		// 		return
+		// 	}
+		// 	metric = &model.Metrics{
+		// 		ID:    metricName,
+		// 		MType: model.Counter,
+		// 		Delta: &valueInt,
+		// 	}
+		// default:
+		// 	unknownMetricType(c, metricType)
+		// 	return
+		// }
+
+		metric, err := model.NewMetrics(metricName, metricType, valueStr)
+		if err != nil {
+			switch err {
+			case model.ErrUnknownMetricType:
+				unknownMetricType(c, metricType)
+			case model.ErrInvalidCounterValue, model.ErrInvalidGaugeValue:
 				invalidValueFormat(c, err)
-				return
+			default:
+				abortWithError(c, 400, err.Error())
 			}
-			metric = &model.Metrics{
-				ID:    metricName,
-				MType: model.Gauge,
-				Value: &valueFloat,
-			}
-		case model.Counter:
-			valueInt, err := strconv.ParseInt(valueStr, 10, 64)
-			if err != nil {
-				invalidValueFormat(c, err)
-				return
-			}
-			metric = &model.Metrics{
-				ID:    metricName,
-				MType: model.Counter,
-				Delta: &valueInt,
-			}
-		default:
-			unknownMetricType(c, metricType)
 			return
 		}
 

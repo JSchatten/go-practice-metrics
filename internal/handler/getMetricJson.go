@@ -13,7 +13,7 @@ import (
 func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logZero.Logger.Info().Msg("ValueHandlerJSON")
-		var metricIn model.RequestMetrics
+		var metricIn model.Metrics
 
 		// Это по-хорошему, т.к. есть sonic-avx, для build-тегов, но требования такие
 		// if err := c.ShouldBindJSON(&metricIn); err != nil {

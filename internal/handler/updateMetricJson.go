@@ -13,7 +13,7 @@ import (
 func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logZero.Logger.Info().Msg("UpdateHandlerJSON")
-		var metricIn model.RequestMetrics
+		var metricIn model.Metrics
 
 		if c.Request.Method != http.MethodPost {
 			methodNotAllowed(c)
@@ -32,35 +32,53 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		if metricIn.ID == "" || metricIn.MType == "" {
-			bodyMissingFields(c)
-			return
-		}
+		// if metricIn.ID == "" || metricIn.MType == "" {
+		// 	bodyMissingFields(c)
+		// 	return
+		// }
 
-		switch metricIn.MType {
-		case "counter":
-			if metricIn.Delta == nil {
+		// switch metricIn.MType {
+		// case "counter":
+		// 	if metricIn.Delta == nil {
+		// 		deltaNotProvided(c)
+		// 		return
+		// 	}
+		// case "gauge":
+		// 	if metricIn.Value == nil {
+		// 		valueNotProvided(c)
+		// 		return
+		// 	}
+		// default:
+		// 	bodyInvalidMetricType(c)
+		// 	return
+		// }
+
+		// Валидация через метод
+		if err := metricIn.Validate(); err != nil {
+			logZero.Logger.Error().Err(err).Msgf("Validate error %+v", metricIn)
+			switch err {
+			case model.ErrEmptyMetricID, model.ErrEmptyMetricType:
+				bodyMissingFields(c)
+			case model.ErrDeltaRequired:
 				deltaNotProvided(c)
-				return
-			}
-		case "gauge":
-			if metricIn.Value == nil {
+			case model.ErrValueRequired:
 				valueNotProvided(c)
-				return
+			case model.ErrUnknownMetricType:
+				bodyInvalidMetricType(c)
+			default:
+				abortWithError(c, 400, err.Error())
 			}
-		default:
-			bodyInvalidMetricType(c)
 			return
 		}
 
-		metricOut := model.Metrics{
-			ID:    metricIn.ID,
-			MType: metricIn.MType,
-			Delta: metricIn.Delta,
-			Value: metricIn.Value,
-		}
+		// metricOut := model.Metrics{
+		// 	ID:    metricIn.ID,
+		// 	MType: metricIn.MType,
+		// 	Delta: metricIn.Delta,
+		// 	Value: metricIn.Value,
+		// }
 
-		err := storage.UpdateMetric(&metricOut)
+		err := storage.UpdateMetric(&metricIn)
 		if err != nil {
 			failedToUpdateMetric(c, err)
 			return
