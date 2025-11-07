@@ -1,57 +1,39 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
 
+	"log"
+
 	agentInternal "github.com/JSchatten/go-practice-metrics/internal/agent"
+	config "github.com/JSchatten/go-practice-metrics/internal/config"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
-)
 
-var (
-	address        string
-	reportInterval int
-	pollInterval   int
+	"github.com/rs/zerolog"
+	logZero "github.com/rs/zerolog/log"
 )
-
-func init() {
-	flag.StringVar(&address, "a", "localhost:8080", "Server address (default: localhost:8080)")
-	flag.IntVar(&reportInterval, "r", 10, "Report interval in seconds (default: 10)")
-	flag.IntVar(&pollInterval, "p", 2, "Poll interval in seconds (default: 2)")
-}
 
 func main() {
-	flag.Parse()
 
-	if flag.NArg() > 0 {
-		fmt.Fprintf(os.Stderr, "Error: unknown flags: %v\n", flag.Args())
-		os.Exit(1)
-	}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
-	// Проверка корректности интервалов
-	if reportInterval <= 0 {
-		fmt.Fprintf(os.Stderr, "Error: reportInterval must be positive\n")
-		os.Exit(1)
-	}
-	if pollInterval <= 0 {
-		fmt.Fprintf(os.Stderr, "Error: pollInterval must be positive\n")
-		os.Exit(1)
-	}
+	cfg, err := config.InitAgentFlags()
 
-	cfg := agentInternal.InitFlags(
-		pollInterval,
-		reportInterval,
-		address,
-	)
+	if err != nil {
+		logZero.Logger.Fatal().Err(err).Msg("Failed start agent agentFlags")
+	}
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	storage := storage.NewMemStorage()
+	storage, err := storage.NewMemStorage(os.DevNull, 0, false)
+	if err != nil {
+		logZero.Logger.Fatal().Err(err).Msg("Failed start agent memStorage")
+	}
 	done := make(chan struct{})
 
 	sigChan := make(chan os.Signal, 1)
@@ -65,6 +47,6 @@ func main() {
 
 	// Запуск сбора и отправки метрик
 	agentInternal.UpdateRuntimeMetrics(*cfg, storage, done)
+	logZero.Logger.Info().Msg("Agent processed")
 
-	fmt.Println("Agent processed")
 }
