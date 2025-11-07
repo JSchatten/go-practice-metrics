@@ -15,12 +15,12 @@ func NewErrUnknownMetricType(mtype string) error {
 	return fmt.Errorf("%w: %s", ErrUnknownMetricType, mtype)
 }
 
-func NewErrSaveToFile(err error) error {
-	return fmt.Errorf("failed to save metrics to file: %w", err)
+func NewErrSaveToFile(filename string, err error) error {
+	return fmt.Errorf("failed to save metrics to file %s: %w", filename, err)
 }
 
-func NewErrLoadFromFile(err error) error {
-	return fmt.Errorf("failed to load metrics from file: %w", err)
+func NewErrLoadFromFile(filename string, err error) error {
+	return fmt.Errorf("failed to load metrics from file %s: %w", filename, err)
 }
 
 func NewErrMarshal(err error) error {

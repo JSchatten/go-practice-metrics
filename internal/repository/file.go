@@ -1,16 +1,21 @@
 package repository
 
 import (
-	"encoding/json"
 	"os"
 	"sync"
-
-	model "github.com/JSchatten/go-practice-metrics/internal/model"
 )
 
 type FileRepository struct {
 	filePath     string
 	mxFileAccess sync.Mutex // защищаем доступ к файлу
+}
+
+func (r *FileRepository) FilePath() string {
+	if r == nil {
+		return ""
+	} else {
+		return r.filePath
+	}
 }
 
 func NewFileRepository(filePath string) *FileRepository {
@@ -38,9 +43,9 @@ func (r *FileRepository) SaveMetrics(data []byte) error {
 	return nil
 }
 
-func (r *FileRepository) LoadMetrics() (map[string]*model.Metrics, error) {
+func (r *FileRepository) LoadMetrics() ([]byte, error) {
 	if r.filePath == "" {
-		return make(map[string]*model.Metrics), nil
+		return make([]byte, 0), nil
 	}
 
 	r.mxFileAccess.Lock()
@@ -49,21 +54,11 @@ func (r *FileRepository) LoadMetrics() (map[string]*model.Metrics, error) {
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]*model.Metrics), nil
+			return make([]byte, 0), nil
 		}
 		return nil, NewErrReadFile(r.filePath, err)
 	}
 
-	var metrics []model.Metrics
-	if err := json.Unmarshal(data, &metrics); err != nil {
-		return nil, NewErrUnmarshal(r.filePath, err)
-	}
+	return data, nil
 
-	result := make(map[string]*model.Metrics)
-	for i := range metrics {
-		m := metrics[i]
-		result[m.ID] = &m
-	}
-
-	return result, nil
 }

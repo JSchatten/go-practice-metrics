@@ -55,15 +55,33 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 }
 
 func (s *MemStorage) loadFromDisk() error {
-	metrics, err := s.fileRepo.LoadMetrics()
+
+	metricsData, err := s.fileRepo.LoadMetrics()
+
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("Failed to load metrics from file")
 		return err
 	}
 
+	if len(metricsData) == 0 {
+		log.Logger.Info().Msg("Empty filestorage, init empty slice")
+		metricsData = []byte("[]")
+	}
+
+	var metrics []model.Metrics
+	if err := json.Unmarshal(metricsData, &metrics); err != nil {
+		return NewErrLoadFromFile(s.fileRepo.FilePath(), err)
+	}
+
+	result := make(map[string]*model.Metrics)
+	for i := range metrics {
+		m := metrics[i]
+		result[m.ID] = &m
+	}
+
 	s.mxDataAccess.Lock()
 	defer s.mxDataAccess.Unlock()
-	s.Metrics = metrics
+	s.Metrics = result
 	return nil
 }
 
@@ -109,7 +127,7 @@ func (s *MemStorage) SaveToFile() error {
 	}
 
 	if err := s.fileRepo.SaveMetrics(bytesToSave); err != nil {
-		return NewErrSaveToFile(err)
+		return NewErrSaveToFile(s.fileRepo.FilePath(), err)
 	}
 
 	return nil
