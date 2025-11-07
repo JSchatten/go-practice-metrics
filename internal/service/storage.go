@@ -64,7 +64,7 @@ func (s *MemStorage) loadFromDisk() error {
 	}
 
 	if len(metricsData) == 0 {
-		log.Logger.Info().Msg("Empty filestorage, init empty slice")
+		log.Logger.Warn().Msg("Empty filestorage, init empty slice")
 		metricsData = []byte("[]")
 	}
 

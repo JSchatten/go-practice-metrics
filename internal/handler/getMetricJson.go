@@ -21,14 +21,13 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		// 	return
 		// }
 
-		decoder := json.NewDecoder(c.Request.Body)
-		if err := decoder.Decode(&metricIn); err != nil {
-			bodyInvalidJSON(c)
+		if err := json.NewDecoder(c.Request.Body).Decode(&metricIn); err != nil {
+			BodyInvalidJSON(c)
 			return
 		}
 
 		if metricIn.ID == "" || metricIn.MType == "" {
-			bodyMissingFields(c)
+			BodyMissingFields(c)
 			return
 		}
 
@@ -36,18 +35,18 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		case "gauge", "counter":
 			// ок
 		default:
-			bodyInvalidMetricType(c)
+			BodyInvalidMetricType(c)
 			return
 		}
 
 		metric := storage.GetMetric(metricIn.ID)
 		if metric == nil {
-			metricNotFound(c)
+			MetricNotFound(c)
 			return
 		}
 
 		if metric.MType != metricIn.MType {
-			invalidMetricTypeMissmatch(c)
+			InvalidMetricTypeMismatch(c)
 			return
 		}
 

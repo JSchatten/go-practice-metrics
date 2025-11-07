@@ -15,7 +15,7 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		logZero.Logger.Info().Msg("UpdateHandler")
 
 		if c.Request.Method != http.MethodPost {
-			methodNotAllowed(c)
+			MethodNotAllowed(c)
 			return
 		}
 
@@ -23,56 +23,28 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		metricName := c.Param("name")
 		valueStr := c.Param("value")
 		if metricType == "" || metricName == "" || valueStr == "" {
-			missingParameters(c)
+			MissingParameters(c)
 			return
 		}
-
-		// var metric *model.Metrics
-
-		// switch metricType {
-		// case model.Gauge:
-		// 	valueFloat, err := strconv.ParseFloat(valueStr, 64)
-		// 	if err != nil {
-		// 		invalidValueFormat(c, err)
-		// 		return
-		// 	}
-		// 	metric = &model.Metrics{
-		// 		ID:    metricName,
-		// 		MType: model.Gauge,
-		// 		Value: &valueFloat,
-		// 	}
-		// case model.Counter:
-		// 	valueInt, err := strconv.ParseInt(valueStr, 10, 64)
-		// 	if err != nil {
-		// 		invalidValueFormat(c, err)
-		// 		return
-		// 	}
-		// 	metric = &model.Metrics{
-		// 		ID:    metricName,
-		// 		MType: model.Counter,
-		// 		Delta: &valueInt,
-		// 	}
-		// default:
-		// 	unknownMetricType(c, metricType)
-		// 	return
-		// }
 
 		metric, err := model.NewMetrics(metricName, metricType, valueStr)
 		if err != nil {
 			switch err {
 			case model.ErrUnknownMetricType:
-				unknownMetricType(c, metricType)
+				UnknownMetricType(c, metricType)
 			case model.ErrInvalidCounterValue, model.ErrInvalidGaugeValue:
-				invalidValueFormat(c, err)
+				InvalidValueFormat(c, err)
 			default:
-				abortWithError(c, 400, err.Error())
+				// abortWithError(c, err)
+				// InternalError(c)
+				BadRequestVerbose(c, err)
 			}
 			return
 		}
 
 		// Обновление метрики
 		if err := storage.UpdateMetric(metric); err != nil {
-			failedToUpdateMetric(c, err)
+			FailedToUpdateMetric(c, err)
 			return
 		}
 		// fmt.Printf("Metrics %+v added \n", metric)

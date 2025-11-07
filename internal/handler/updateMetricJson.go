@@ -16,7 +16,7 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		var metricIn model.Metrics
 
 		if c.Request.Method != http.MethodPost {
-			methodNotAllowed(c)
+			MethodNotAllowed(c)
 			return
 		}
 
@@ -28,59 +28,32 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 
 		decoder := json.NewDecoder(c.Request.Body)
 		if err := decoder.Decode(&metricIn); err != nil {
-			bodyInvalidJSON(c)
+			BodyInvalidJSON(c)
 			return
 		}
-
-		// if metricIn.ID == "" || metricIn.MType == "" {
-		// 	bodyMissingFields(c)
-		// 	return
-		// }
-
-		// switch metricIn.MType {
-		// case "counter":
-		// 	if metricIn.Delta == nil {
-		// 		deltaNotProvided(c)
-		// 		return
-		// 	}
-		// case "gauge":
-		// 	if metricIn.Value == nil {
-		// 		valueNotProvided(c)
-		// 		return
-		// 	}
-		// default:
-		// 	bodyInvalidMetricType(c)
-		// 	return
-		// }
 
 		// Валидация через метод
 		if err := metricIn.Validate(); err != nil {
 			logZero.Logger.Error().Err(err).Msgf("Validate error %+v", metricIn)
 			switch err {
 			case model.ErrEmptyMetricID, model.ErrEmptyMetricType:
-				bodyMissingFields(c)
+				BodyMissingFields(c)
 			case model.ErrDeltaRequired:
-				deltaNotProvided(c)
+				DeltaNotProvided(c)
 			case model.ErrValueRequired:
-				valueNotProvided(c)
+				ValueNotProvided(c)
 			case model.ErrUnknownMetricType:
-				bodyInvalidMetricType(c)
+				BodyInvalidMetricType(c)
 			default:
-				abortWithError(c, 400, err.Error())
+				// abortWithError(c, 400, err.Error())
+				BadRequestVerbose(c, err)
 			}
 			return
 		}
 
-		// metricOut := model.Metrics{
-		// 	ID:    metricIn.ID,
-		// 	MType: metricIn.MType,
-		// 	Delta: metricIn.Delta,
-		// 	Value: metricIn.Value,
-		// }
-
 		err := storage.UpdateMetric(&metricIn)
 		if err != nil {
-			failedToUpdateMetric(c, err)
+			FailedToUpdateMetric(c, err)
 			return
 		}
 

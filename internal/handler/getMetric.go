@@ -15,21 +15,21 @@ func ValueHandler(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logZero.Logger.Info().Msg("ValueHandler")
 		if c.Request.Method != http.MethodGet {
-			badRequest(c)
+			BadRequest(c)
 			return
 		}
 
 		metricType := c.Param("type")
 		metricName := c.Param("name")
 		if metricType == "" || metricName == "" {
-			methodNotAllowed(c)
+			MethodNotAllowed(c)
 			return
 		}
 
 		metric := storage.GetMetric(metricName)
 
 		if metric == nil {
-			metricNotFound(c)
+			MetricNotFound(c)
 			return
 		}
 
@@ -37,18 +37,18 @@ func ValueHandler(storage storage.Storage) gin.HandlerFunc {
 		switch metric.MType {
 		case model.Gauge:
 			if metric.Value == nil {
-				valueNotProvided(c)
+				ValueNotProvided(c)
 				return
 			}
 			valueStr = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
 		case model.Counter:
 			if metric.Delta == nil {
-				deltaNotProvided(c)
+				DeltaNotProvided(c)
 				return
 			}
 			valueStr = strconv.FormatInt(*metric.Delta, 10)
 		default:
-			unknownMetricType(c, metricType)
+			UnknownMetricType(c, metricType)
 			return
 		}
 
