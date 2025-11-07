@@ -93,7 +93,18 @@ func (s *MemStorage) SaveToFile() error {
 		return nil
 	}
 
-	if err := s.fileRepo.SaveMetrics(s.Metrics); err != nil {
+	// Делаем снимок
+	snapshot := make([]model.Metrics, 0, len(s.Metrics))
+	for _, m := range s.Metrics {
+		snapshot = append(snapshot, *m)
+	}
+
+	bytesToSave, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return NewErrMarshal(err)
+	}
+
+	if err := s.fileRepo.SaveMetrics(bytesToSave); err != nil {
 		return NewErrSaveToFile(err)
 	}
 

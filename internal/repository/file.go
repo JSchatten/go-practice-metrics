@@ -19,24 +19,17 @@ func NewFileRepository(filePath string) *FileRepository {
 	}
 }
 
-func (r *FileRepository) SaveMetrics(metrics map[string]*model.Metrics) error {
+func (r *FileRepository) SaveMetrics(data []byte) error {
 	if r.filePath == "" {
 		return nil
 	}
 
+	if len(data) == 0 {
+		return ErrNoData
+	}
+
 	r.mxFileAccess.Lock()
 	defer r.mxFileAccess.Unlock()
-
-	// Делаем снимок
-	snapshot := make([]model.Metrics, 0, len(metrics))
-	for _, m := range metrics {
-		snapshot = append(snapshot, *m)
-	}
-
-	data, err := json.MarshalIndent(snapshot, "", "  ")
-	if err != nil {
-		return NewErrMarshal(err)
-	}
 
 	if err := os.WriteFile(r.filePath, data, 0600); err != nil {
 		return NewErrWriteFile(r.filePath, err)
