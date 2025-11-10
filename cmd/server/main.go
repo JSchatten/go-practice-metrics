@@ -13,6 +13,7 @@ import (
 
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
@@ -21,6 +22,28 @@ import (
 	"github.com/rs/zerolog"
 	logZero "github.com/rs/zerolog/log"
 )
+
+var Pool *pgxpool.Pool
+
+func InitDB(dsn string) {
+	var err error
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
+	}
+
+	Pool, err = pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		log.Fatalf("Unable to create connection pool: %v", err)
+	}
+
+	// Проверка соединения
+	if err := Pool.Ping(context.Background()); err != nil {
+		log.Fatalf("Unable to connect to database: %v", err)
+	}
+
+	fmt.Println("Connected to PostgreSQL!")
+}
 
 func main() {
 
@@ -38,6 +61,7 @@ func main() {
 		cfg.ServerFileFlags.FilePath,
 		cfg.ServerFileFlags.FileInterval,
 		cfg.ServerFileFlags.FileIsRestore,
+		cfg.PostgresDSN,
 	)
 
 	if err != nil {
@@ -56,6 +80,7 @@ func main() {
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
 	router.POST("/update", handlers.UpdateHandlerJSON(storageObj))
 	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
+	router.GET("/ping", handlers.PingDatabaseHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
 	// Запуск сервера в отдельной горутине

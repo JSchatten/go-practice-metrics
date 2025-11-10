@@ -18,14 +18,14 @@ run_server:
 run_agent:
 	go run cmd/agent/main.go
 
-test_server:
-	./metricstest  -test.v -test.run=^TestIteration6$ -server-binary-path=./build/server_out/server
+test_by_bin: build_server build_agent
+	./metricstest  -test.v  -test.run=^TestIteration10$
+# 	./metricstest  -test.v -test.run=^TestIteration13$ -source-path=./.
+# 	-server-binary-path=$(build_server_out)/server
+# 	./metricstest  -test.v -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
 
 test_local:
 	go test ./...
-
-test_agent:
-	./metricstest  -test.v -test.run=^TestIteration5$ -server-binary-path=./build/agent_out/agent
 
 build_test_local_all: build_server build_agent test_local
 	@echo "Full run build and test for server finished"

@@ -97,7 +97,7 @@ func TestUpdateHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := gin.New()
 
-			memStorage, err := storageService.NewMemStorage(os.DevNull, 0, false)
+			memStorage, err := storageService.NewMemStorage(os.DevNull, 0, false, "")
 			if err != nil {
 				t.Fatalf("Failed to create memory storage: %v", err)
 			}

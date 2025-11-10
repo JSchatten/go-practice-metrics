@@ -45,7 +45,7 @@ func TestStorageSuiteRun(t *testing.T) {
 // --- Тесты ---
 
 func (s *TestStorageSuite) TestNewMemStorage_NoFile() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 	s.NotNil(storage)
 	s.Nil(storage.fileRepo)
@@ -72,7 +72,7 @@ func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_Exists() {
 	err = os.WriteFile(s.file, data, 0600)
 	s.NoError(err)
 
-	storage, err := NewMemStorage(s.file, 0, true)
+	storage, err := NewMemStorage(s.file, 0, true, "")
 	s.NoError(err)
 	s.NotNil(storage.fileRepo)
 
@@ -88,7 +88,7 @@ func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_Exists() {
 }
 
 func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_NotExists() {
-	storage, err := NewMemStorage(s.file, 0, true)
+	storage, err := NewMemStorage(s.file, 0, true, "")
 	s.NoError(err)
 	s.NotNil(storage.fileRepo)
 	s.Empty(storage.Metrics) // должно быть пусто
@@ -98,12 +98,12 @@ func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_InvalidJSON() {
 	err := os.WriteFile(s.file, []byte(`{ "invalid": `), 0600)
 	s.NoError(err)
 
-	_, err = NewMemStorage(s.file, 0, true)
+	_, err = NewMemStorage(s.file, 0, true, "")
 	s.Error(err)
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_Gauge() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	metric := &model.Metrics{
@@ -121,7 +121,7 @@ func (s *TestStorageSuite) TestUpdateMetric_Gauge() {
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_Counter_Increment() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	// Первое значение
@@ -146,7 +146,7 @@ func (s *TestStorageSuite) TestUpdateMetric_Counter_Increment() {
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_UnknownType() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	err = storage.UpdateMetric(&model.Metrics{
@@ -158,7 +158,7 @@ func (s *TestStorageSuite) TestUpdateMetric_UnknownType() {
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_NilValueOrDelta() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	err = storage.UpdateMetric(&model.Metrics{
@@ -179,7 +179,7 @@ func (s *TestStorageSuite) TestUpdateMetric_NilValueOrDelta() {
 }
 
 func (s *TestStorageSuite) TestGetMetric_NotFound() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	got := storage.GetMetric("unknown")
@@ -187,7 +187,7 @@ func (s *TestStorageSuite) TestGetMetric_NotFound() {
 }
 
 func (s *TestStorageSuite) TestSaveToFile_ImmediatelyFlush() {
-	storage, err := NewMemStorage(s.file, 0, false)
+	storage, err := NewMemStorage(s.file, 0, false, "")
 	s.NoError(err)
 	storage.immediatelyFlush = true // принудительно
 
@@ -211,13 +211,13 @@ func (s *TestStorageSuite) TestSaveToFile_ImmediatelyFlush() {
 }
 
 func (s *TestStorageSuite) TestString_Empty() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 	s.Empty(storage.String())
 }
 
 func (s *TestStorageSuite) TestString_NonEmpty() {
-	storage, err := NewMemStorage("", 0, false)
+	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	storage.Metrics["cpu"] = &model.Metrics{

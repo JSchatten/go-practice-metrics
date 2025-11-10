@@ -30,7 +30,7 @@ func main() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	storage, err := storage.NewMemStorage(os.DevNull, 0, false)
+	storage, err := storage.NewMemStorage(os.DevNull, 0, false, "")
 	if err != nil {
 		logZero.Logger.Fatal().Err(err).Msg("Failed start agent memStorage")
 	}

@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"time"
 
-	filerepo "github.com/JSchatten/go-practice-metrics/internal/repository"
+	fileRepos "github.com/JSchatten/go-practice-metrics/internal/repository/file"
+	postgresqlRepo "github.com/JSchatten/go-practice-metrics/internal/repository/postgresql"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	"github.com/rs/zerolog/log"
@@ -14,7 +17,8 @@ import (
 type MemStorage struct {
 	Metrics          map[string]*model.Metrics
 	mxDataAccess     sync.RWMutex // Мютекс Rw, для параллельнго чтения
-	fileRepo         *filerepo.FileRepository
+	fileRepo         *fileRepos.FileRepository
+	dbRepo           *postgresqlRepo.MetricRepo
 	immediatelyFlush bool
 }
 
@@ -22,18 +26,32 @@ type Storage interface {
 	UpdateMetric(metric *model.Metrics) error
 	GetMetric(id string) *model.Metrics
 	String() string
+	PingDatabase(ctx context.Context) error
 }
 
-func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool) (*MemStorage, error) {
+func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool, postgresDSN string) (*MemStorage, error) {
 
-	var fileRepo *filerepo.FileRepository
+	var fileRepo *fileRepos.FileRepository
 	if filePath != "" {
-		fileRepo = filerepo.NewFileRepository(filePath)
+		fileRepo = fileRepos.NewFileRepository(filePath)
 	}
+
+	config, err := pgxpool.ParseConfig(postgresDSN)
+	if err != nil {
+		return nil, err
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := postgresqlRepo.NewMetricRepo(pool)
 
 	storage := &MemStorage{
 		Metrics:  make(map[string]*model.Metrics),
 		fileRepo: fileRepo,
+		dbRepo:   repo,
 	}
 
 	if fileRepo != nil {
@@ -52,6 +70,10 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 		log.Logger.Warn().Msgf("No filepath for load data")
 	}
 	return storage, nil
+}
+
+func (s *MemStorage) PingDatabase(ctx context.Context) error {
+	return s.dbRepo.Ping(ctx)
 }
 
 func (s *MemStorage) loadFromDisk() error {
