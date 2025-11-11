@@ -8,7 +8,6 @@ import (
 
 	fileRepos "github.com/JSchatten/go-practice-metrics/internal/repository/file"
 	postgresqlRepo "github.com/JSchatten/go-practice-metrics/internal/repository/postgresql"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	"github.com/rs/zerolog/log"
@@ -23,8 +22,8 @@ type MemStorage struct {
 }
 
 type Storage interface {
-	UpdateMetric(metric *model.Metrics) error
-	GetMetric(id string) *model.Metrics
+	UpdateMetric(ctx context.Context, metric *model.Metrics) error
+	GetMetric(ctx context.Context, id string) *model.Metrics
 	String() string
 	PingDatabase(ctx context.Context) error
 }
@@ -36,17 +35,20 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 		fileRepo = fileRepos.NewFileRepository(filePath)
 	}
 
-	config, err := pgxpool.ParseConfig(postgresDSN)
+	repo, err := postgresqlRepo.NewMetricRepo(postgresDSN)
 	if err != nil {
-		return nil, err
+		log.Logger.Warn().Err(err).Msg("Failed to connect to postgres")
+	} else {
+		ctx := context.Background()
+		err = repo.Ping(ctx)
+		if err != nil {
+			log.Logger.Warn().Err(err).Msg("No postgres connection, skip processing with database")
+		} else {
+			if err := repo.Migrate(ctx); err != nil {
+				log.Logger.Warn().Err(err).Msg("Failed to migrate database")
+			}
+		}
 	}
-
-	pool, err := pgxpool.NewWithConfig(context.Background(), config)
-	if err != nil {
-		return nil, err
-	}
-
-	repo := postgresqlRepo.NewMetricRepo(pool)
 
 	storage := &MemStorage{
 		Metrics:  make(map[string]*model.Metrics),
@@ -76,85 +78,6 @@ func (s *MemStorage) PingDatabase(ctx context.Context) error {
 	return s.dbRepo.Ping(ctx)
 }
 
-func (s *MemStorage) loadFromDisk() error {
-
-	metricsData, err := s.fileRepo.LoadMetrics()
-
-	if err != nil {
-		log.Logger.Error().Err(err).Msg("Failed to load metrics from file")
-		return err
-	}
-
-	if len(metricsData) == 0 {
-		log.Logger.Warn().Msg("Empty filestorage, init empty slice")
-		metricsData = []byte("[]")
-	}
-
-	var metrics []model.Metrics
-	if err := json.Unmarshal(metricsData, &metrics); err != nil {
-		return NewErrLoadFromFile(s.fileRepo.FilePath(), err)
-	}
-
-	result := make(map[string]*model.Metrics)
-	for i := range metrics {
-		m := metrics[i]
-		result[m.ID] = &m
-	}
-
-	s.mxDataAccess.Lock()
-	defer s.mxDataAccess.Unlock()
-	s.Metrics = result
-	return nil
-}
-
-func (s *MemStorage) startAutoSave(interval time.Duration) {
-	if interval <= 0 {
-		log.Logger.Info().Msg("Ignore interval less than 0, gorutine was stopped")
-		return
-	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	log.Logger.Info().Msg("Starting auto-save")
-
-	for range ticker.C {
-		if err := s.SaveToFile(); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
-		}
-	}
-}
-
-func (s *MemStorage) SaveToFile() error {
-	// Потенциальный дедлок
-	// if s.mxDataAccess.TryLock() {
-	// 	defer s.mxDataAccess.RUnlock()
-	// }
-	// Потенциальный дедлок
-	// s.mxDataAccess.RLock()
-	// defer s.mxDataAccess.RUnlock()
-
-	if s.fileRepo == nil {
-		return nil
-	}
-
-	// Делаем снимок
-	snapshot := make([]model.Metrics, 0, len(s.Metrics))
-	for _, m := range s.Metrics {
-		snapshot = append(snapshot, *m)
-	}
-
-	bytesToSave, err := json.MarshalIndent(snapshot, "", "  ")
-	if err != nil {
-		return NewErrMarshal(err)
-	}
-
-	if err := s.fileRepo.SaveMetrics(bytesToSave); err != nil {
-		return NewErrSaveToFile(s.fileRepo.FilePath(), err)
-	}
-
-	return nil
-}
-
 func (s *MemStorage) String() string {
 	s.mxDataAccess.RLock()
 	defer s.mxDataAccess.RUnlock()
@@ -176,7 +99,7 @@ func (s *MemStorage) String() string {
 	return string(metricsStr)
 }
 
-func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
+func (s *MemStorage) UpdateMetric(ctx context.Context, metric *model.Metrics) error {
 	s.mxDataAccess.Lock()
 	defer s.mxDataAccess.Unlock()
 
@@ -214,6 +137,12 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 	default:
 		return NewErrUnknownMetricType(string(metric.MType))
 	}
+	if s.PingDatabase(ctx) == nil {
+		if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
+			log.Logger.Error().Err(err).Msgf("Failed to save metric to database")
+		}
+	}
+
 	if s.immediatelyFlush {
 		if err := s.SaveToFile(); err != nil {
 			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
@@ -222,9 +151,19 @@ func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
 	return nil
 }
 
-func (s *MemStorage) GetMetric(id string) *model.Metrics {
+func (s *MemStorage) GetMetric(ctx context.Context, id string) *model.Metrics {
 	s.mxDataAccess.RLock()
 	defer s.mxDataAccess.RUnlock()
+
+	// Возвращаем из БД, если она жива
+	if s.PingDatabase(ctx) == nil {
+		if metric, err := s.dbRepo.GetMetricByID(ctx, id); err == nil {
+			s.Metrics[metric.ID] = metric
+			return metric
+		}
+	}
+
+	// Иначе берем из памят
 	if metric, exists := s.Metrics[id]; exists {
 		return metric
 	} else {

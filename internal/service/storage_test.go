@@ -54,6 +54,7 @@ func (s *TestStorageSuite) TestNewMemStorage_NoFile() {
 }
 
 func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_Exists() {
+	ctx := s.T().Context()
 	// Подготовка файла
 	metrics := []model.Metrics{
 		{
@@ -76,13 +77,13 @@ func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_Exists() {
 	s.NoError(err)
 	s.NotNil(storage.fileRepo)
 
-	metric := storage.GetMetric("cpu")
+	metric := storage.GetMetric(ctx, "cpu")
 	s.NotNil(metric)
 	s.Equal("cpu", metric.ID)
 	s.Equal(model.Gauge, metric.MType)
 	s.InDelta(99.5, *metric.Value, 1e-6)
 
-	metric = storage.GetMetric("requests")
+	metric = storage.GetMetric(ctx, "requests")
 	s.NotNil(metric)
 	s.Equal(int64(100), *metric.Delta)
 }
@@ -103,6 +104,7 @@ func (s *TestStorageSuite) TestNewMemStorage_LoadFromFile_InvalidJSON() {
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_Gauge() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
@@ -111,21 +113,22 @@ func (s *TestStorageSuite) TestUpdateMetric_Gauge() {
 		MType: model.Gauge,
 		Value: floatPtr(42.1),
 	}
-	err = storage.UpdateMetric(metric)
+	err = storage.UpdateMetric(ctx, metric)
 	s.NoError(err)
 
-	got := storage.GetMetric("cpu")
+	got := storage.GetMetric(ctx, "cpu")
 	s.NotNil(got)
 	s.Equal(model.Gauge, got.MType)
 	s.InDelta(42.1, *got.Value, 1e-6)
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_Counter_Increment() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
 	// Первое значение
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "requests",
 		MType: model.Counter,
 		Delta: intPtr(5),
@@ -133,23 +136,24 @@ func (s *TestStorageSuite) TestUpdateMetric_Counter_Increment() {
 	s.NoError(err)
 
 	// Второе значение — должно прибавиться
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "requests",
 		MType: model.Counter,
 		Delta: intPtr(3),
 	})
 	s.NoError(err)
 
-	got := storage.GetMetric("requests")
+	got := storage.GetMetric(ctx, "requests")
 	s.NotNil(got)
 	s.Equal(int64(8), *got.Delta)
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_UnknownType() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "bad",
 		MType: "unknown",
 		Value: floatPtr(1.0),
@@ -158,10 +162,11 @@ func (s *TestStorageSuite) TestUpdateMetric_UnknownType() {
 }
 
 func (s *TestStorageSuite) TestUpdateMetric_NilValueOrDelta() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "cpu",
 		MType: model.Gauge,
 		Value: nil,
@@ -169,7 +174,7 @@ func (s *TestStorageSuite) TestUpdateMetric_NilValueOrDelta() {
 	s.Error(err)
 	s.Equal(ErrValueRequired, err)
 
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "requests",
 		MType: model.Counter,
 		Delta: nil,
@@ -179,19 +184,21 @@ func (s *TestStorageSuite) TestUpdateMetric_NilValueOrDelta() {
 }
 
 func (s *TestStorageSuite) TestGetMetric_NotFound() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage("", 0, false, "")
 	s.NoError(err)
 
-	got := storage.GetMetric("unknown")
+	got := storage.GetMetric(ctx, "unknown")
 	s.Nil(got)
 }
 
 func (s *TestStorageSuite) TestSaveToFile_ImmediatelyFlush() {
+	ctx := s.T().Context()
 	storage, err := NewMemStorage(s.file, 0, false, "")
 	s.NoError(err)
 	storage.immediatelyFlush = true // принудительно
 
-	err = storage.UpdateMetric(&model.Metrics{
+	err = storage.UpdateMetric(ctx, &model.Metrics{
 		ID:    "cpu",
 		MType: model.Gauge,
 		Value: floatPtr(99.9),

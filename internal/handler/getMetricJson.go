@@ -39,7 +39,7 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		metric := storage.GetMetric(metricIn.ID)
+		metric := storage.GetMetric(c, metricIn.ID)
 		if metric == nil {
 			MetricNotFound(c)
 			return

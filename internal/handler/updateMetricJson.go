@@ -45,13 +45,12 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			case model.ErrUnknownMetricType:
 				BodyInvalidMetricType(c)
 			default:
-				// abortWithError(c, 400, err.Error())
 				BadRequestVerbose(c, err)
 			}
 			return
 		}
 
-		err := storage.UpdateMetric(&metricIn)
+		err := storage.UpdateMetric(c, &metricIn)
 		if err != nil {
 			FailedToUpdateMetric(c, err)
 			return

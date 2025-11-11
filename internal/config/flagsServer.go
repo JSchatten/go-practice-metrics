@@ -74,6 +74,28 @@ func InitServerFlags() (*ServerFlags, error) {
 		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
 
+	// Проверим: был ли флаг -d передан явно
+	wasDSNFlagSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "d" {
+			wasDSNFlagSet = true
+		}
+	})
+
+	// Если флаг -d был передан, но значение пустое — ошибка
+	if wasDSNFlagSet && *postgresDSN == "" {
+		return nil, ErrInvalidDSN
+	}
+
+	// Если DSN задан через env, но пуст — тоже ошибка
+	if os.Getenv("DATABASE_DSN") != "" && *postgresDSN == "" {
+		// Это может быть, только если env был "", но это редкий случай
+		// На практике: если env="DATABASE_DSN=", то os.LookupEnv вернёт exists=true, v=""
+		// Мы уже присвоили *postgresDSN = v, т.е. ""
+		// Значит, если env существует и пуст — это тоже ошибка
+		return nil, ErrInvalidDSN
+	}
+
 	if *fileIntervalSec < 0 {
 		return nil, ErrInvalidStoreInterval
 

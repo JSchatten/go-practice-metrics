@@ -26,7 +26,7 @@ func ValueHandler(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		metric := storage.GetMetric(metricName)
+		metric := storage.GetMetric(c, metricName)
 
 		if metric == nil {
 			MetricNotFound(c)

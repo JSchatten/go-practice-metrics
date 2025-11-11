@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"runtime"
@@ -63,6 +64,8 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 	defer tickerCollect.Stop()
 	defer tickerSend.Stop()
 
+	ctx := context.Background()
+
 	for {
 		select {
 		case <-tickerSend.C:
@@ -81,40 +84,40 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
 			// Большой список, 1e9 для перевода в секунды
-			storage.UpdateMetric(getMetricGauge("Alloc", float64(memStats.Alloc)))
-			storage.UpdateMetric(getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys)))
-			storage.UpdateMetric(getMetricGauge("Frees", float64(memStats.Frees)))
-			storage.UpdateMetric(getMetricGauge("GCCPUFraction", memStats.GCCPUFraction))
-			storage.UpdateMetric(getMetricGauge("GCSys", float64(memStats.GCSys)))
-			storage.UpdateMetric(getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc)))
-			storage.UpdateMetric(getMetricGauge("HeapIdle", float64(memStats.HeapIdle)))
-			storage.UpdateMetric(getMetricGauge("HeapInuse", float64(memStats.HeapInuse)))
-			storage.UpdateMetric(getMetricGauge("HeapObjects", float64(memStats.HeapObjects)))
-			storage.UpdateMetric(getMetricGauge("HeapReleased", float64(memStats.HeapReleased)))
-			storage.UpdateMetric(getMetricGauge("HeapSys", float64(memStats.HeapSys)))
-			storage.UpdateMetric(getMetricGauge("LastGC", float64(memStats.LastGC)/1e9))
-			storage.UpdateMetric(getMetricGauge("Lookups", float64(memStats.Lookups)))
-			storage.UpdateMetric(getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse)))
-			storage.UpdateMetric(getMetricGauge("MCacheSys", float64(memStats.MCacheSys)))
-			storage.UpdateMetric(getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse)))
-			storage.UpdateMetric(getMetricGauge("MSpanSys", float64(memStats.MSpanSys)))
-			storage.UpdateMetric(getMetricGauge("Mallocs", float64(memStats.Mallocs)))
-			storage.UpdateMetric(getMetricGauge("NextGC", float64(memStats.NextGC)))
-			storage.UpdateMetric(getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC)))
-			storage.UpdateMetric(getMetricGauge("NumGC", float64(memStats.NumGC)))
-			storage.UpdateMetric(getMetricGauge("OtherSys", float64(memStats.OtherSys)))
-			storage.UpdateMetric(getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9))
-			storage.UpdateMetric(getMetricGauge("StackInuse", float64(memStats.StackInuse)))
-			storage.UpdateMetric(getMetricGauge("StackSys", float64(memStats.StackSys)))
-			storage.UpdateMetric(getMetricGauge("Sys", float64(memStats.Sys)))
-			storage.UpdateMetric(getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc)))
+			storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc)))
+			storage.UpdateMetric(ctx, getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("Frees", float64(memStats.Frees)))
+			storage.UpdateMetric(ctx, getMetricGauge("GCCPUFraction", memStats.GCCPUFraction))
+			storage.UpdateMetric(ctx, getMetricGauge("GCSys", float64(memStats.GCSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapIdle", float64(memStats.HeapIdle)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapInuse", float64(memStats.HeapInuse)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapObjects", float64(memStats.HeapObjects)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapReleased", float64(memStats.HeapReleased)))
+			storage.UpdateMetric(ctx, getMetricGauge("HeapSys", float64(memStats.HeapSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("LastGC", float64(memStats.LastGC)/1e9))
+			storage.UpdateMetric(ctx, getMetricGauge("Lookups", float64(memStats.Lookups)))
+			storage.UpdateMetric(ctx, getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse)))
+			storage.UpdateMetric(ctx, getMetricGauge("MCacheSys", float64(memStats.MCacheSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse)))
+			storage.UpdateMetric(ctx, getMetricGauge("MSpanSys", float64(memStats.MSpanSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("Mallocs", float64(memStats.Mallocs)))
+			storage.UpdateMetric(ctx, getMetricGauge("NextGC", float64(memStats.NextGC)))
+			storage.UpdateMetric(ctx, getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC)))
+			storage.UpdateMetric(ctx, getMetricGauge("NumGC", float64(memStats.NumGC)))
+			storage.UpdateMetric(ctx, getMetricGauge("OtherSys", float64(memStats.OtherSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9))
+			storage.UpdateMetric(ctx, getMetricGauge("StackInuse", float64(memStats.StackInuse)))
+			storage.UpdateMetric(ctx, getMetricGauge("StackSys", float64(memStats.StackSys)))
+			storage.UpdateMetric(ctx, getMetricGauge("Sys", float64(memStats.Sys)))
+			storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc)))
 			// Дополнительные
-			storage.UpdateMetric(getMetricGauge("RandomValue", float64(rand.IntN(100))))
-			pollCnt := storage.GetMetric("PollCount")
+			storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100))))
+			pollCnt := storage.GetMetric(ctx, "PollCount")
 			if pollCnt == nil {
-				storage.UpdateMetric(getMetricCount("PollCount", 1))
+				storage.UpdateMetric(ctx, getMetricCount("PollCount", 1))
 			} else {
-				storage.UpdateMetric(getMetricCount("PollCount", *pollCnt.Delta+1))
+				storage.UpdateMetric(ctx, getMetricCount("PollCount", *pollCnt.Delta+1))
 			}
 			fmt.Println("Collecting metrics done")
 		case <-done:
