@@ -114,7 +114,8 @@ func (s *MemStorage) UpdateMetric(ctx context.Context, metric *model.Metrics) er
 	}
 
 	if s.PingDatabase(ctx) == nil {
-		if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
+		// if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
+		if err := s.dbRepo.UpdateMetric(ctx, metric); err != nil {
 			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
 		}
 	}
