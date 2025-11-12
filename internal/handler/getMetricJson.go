@@ -51,6 +51,7 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, metric)
+		logZero.Logger.Info().Msgf("UpdateHandlerJSON metrics in = %s", metric.String())
 
 	}
 }
