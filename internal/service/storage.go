@@ -23,6 +23,7 @@ type MemStorage struct {
 
 type Storage interface {
 	UpdateMetric(ctx context.Context, metric *model.Metrics) error
+	UpdateMetricBatch(ctx context.Context, metric *[]model.Metrics) error
 	GetMetric(ctx context.Context, id string) *model.Metrics
 	String() string
 	PingDatabase(ctx context.Context) error
@@ -103,49 +104,47 @@ func (s *MemStorage) UpdateMetric(ctx context.Context, metric *model.Metrics) er
 	s.mxDataAccess.Lock()
 	defer s.mxDataAccess.Unlock()
 
-	switch metric.MType {
-	case model.Gauge:
-		if metric.Value == nil {
-			return ErrValueRequired
-		}
-		s.Metrics[metric.ID] = &model.Metrics{
-			ID:    metric.ID,
-			MType: metric.MType,
-			Value: metric.Value,
-		}
-	case model.Counter:
-		if metric.Delta == nil {
-			return ErrDeltaRequired
-		}
-		existing, exists := s.Metrics[metric.ID]
-		if exists && existing.MType == model.Counter {
-			// Добавляем новое значение к существующему
-			newDelta := *existing.Delta + *metric.Delta
-			s.Metrics[metric.ID] = &model.Metrics{
-				ID:    metric.ID,
-				MType: metric.MType,
-				Delta: &newDelta,
-			}
-		} else {
-			// Создаём новую метрику
-			s.Metrics[metric.ID] = &model.Metrics{
-				ID:    metric.ID,
-				MType: metric.MType,
-				Delta: metric.Delta,
-			}
-		}
-	default:
-		return NewErrUnknownMetricType(string(metric.MType))
+	err := s.updateMetricInMemory(metric)
+	if err != nil {
+		log.Logger.Error().Err(err).Msg(ErrMetricSaveMemory.Error())
+		return err
 	}
+
 	if s.PingDatabase(ctx) == nil {
 		if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metric to database")
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
 		}
 	}
 
 	if s.immediatelyFlush {
 		if err := s.SaveToFile(); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedFile.Error())
+		}
+	}
+	return nil
+}
+
+func (s *MemStorage) UpdateMetricBatch(ctx context.Context, metrics *[]model.Metrics) error {
+	s.mxDataAccess.Lock()
+	defer s.mxDataAccess.Unlock()
+
+	for _, elem := range *metrics {
+		err := s.updateMetricInMemory(&elem)
+		if err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveMemory.Error())
+			return err
+		}
+	}
+
+	if s.PingDatabase(ctx) == nil {
+		if err := s.dbRepo.UpdateMetricBatch(ctx, *metrics); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
+		}
+	}
+
+	if s.immediatelyFlush {
+		if err := s.SaveToFile(); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedFile.Error())
 		}
 	}
 	return nil
@@ -168,5 +167,48 @@ func (s *MemStorage) GetMetric(ctx context.Context, id string) *model.Metrics {
 		return metric
 	} else {
 		return nil
+	}
+}
+
+func (s *MemStorage) updateMetricInMemory(metricIn *model.Metrics) error {
+	switch metricIn.MType {
+	case model.Gauge:
+		if metricIn.Value == nil {
+			return ErrValueRequired
+		}
+		updated := &model.Metrics{
+			ID:    metricIn.ID,
+			MType: metricIn.MType,
+			Value: metricIn.Value,
+		}
+		s.Metrics[metricIn.ID] = updated
+		return nil
+
+	case model.Counter:
+		if metricIn.Delta == nil {
+			return ErrDeltaRequired
+		}
+		existing, exists := s.Metrics[metricIn.ID]
+		if exists && existing.MType == model.Counter {
+			newDelta := *existing.Delta + *metricIn.Delta
+			updated := &model.Metrics{
+				ID:    metricIn.ID,
+				MType: metricIn.MType,
+				Delta: &newDelta,
+			}
+			s.Metrics[metricIn.ID] = updated
+			return nil
+		} else {
+			updated := &model.Metrics{
+				ID:    metricIn.ID,
+				MType: metricIn.MType,
+				Delta: metricIn.Delta,
+			}
+			s.Metrics[metricIn.ID] = updated
+			return nil
+		}
+
+	default:
+		return NewErrUnknownMetricType(string(metricIn.MType))
 	}
 }

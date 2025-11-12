@@ -72,7 +72,10 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			fmt.Println("Sending metrics...")
 			// Старый POST запрос
 			// err := sendMetrics(cfg.ServerAddr, storage)
-			err := sendMetricsJSON(cfg.ServerAddr, storage)
+			// Новый POST запрос JSON
+			// err := sendMetricsJSON(cfg.ServerAddr, storage)
+			// Новый POST запрос JSON с batching
+			err := sendMetricsBatchJSON(cfg.ServerAddr, storage)
 
 			if err != nil {
 				fmt.Printf("Error sending metrics: %v\n", err)
