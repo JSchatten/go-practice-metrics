@@ -157,7 +157,8 @@ func (s *MemStorage) GetMetric(ctx context.Context, id string) *model.Metrics {
 	// Возвращаем из БД, если она жива
 	if s.PingDatabase(ctx) == nil {
 		if metric, err := s.dbRepo.GetMetricByID(ctx, id); err == nil {
-			s.Metrics[metric.ID] = metric
+			// TODO убрать после проверки
+			// s.Metrics[metric.ID] = metric
 			return metric
 		}
 	}
