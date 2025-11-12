@@ -63,7 +63,7 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 
 func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		logZero.Logger.Info().Msg("UpdateHandlerJSON")
+		logZero.Logger.Info().Msg("UpdateHandlerBatchJSON")
 		if c.Request.Method != http.MethodPost {
 			MethodNotAllowed(c)
 			return
