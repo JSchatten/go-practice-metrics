@@ -3,7 +3,9 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"time"
 
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
@@ -56,21 +58,52 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 		return fmt.Errorf("failed to compress metrics")
 	}
 
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip").
-		SetHeader("Accept-Encoding", "gzip").
-		// SetBody(jsonData).
-		SetBody(compressed).
-		Post(fmt.Sprintf("http://%s/updates/", serverAddr))
+	var lastErr error
+	var delay time.Duration
+	const MaxRetries = 5
+	const RetryTimeoutDelta = 2 * time.Second
+	const BaseDelay = 1 * time.Second
 
-	if err != nil {
-		return fmt.Errorf("failed to send metrics: %w", err)
+	for attempt := 0; attempt <= 4; attempt++ {
+		if attempt > 0 {
+			fmt.Printf("Retry %d/%d in %v...\n", attempt, MaxRetries, delay)
+			time.Sleep(delay)
+			// delay += RetryTimeoutDelta * time.Second // Линейное увеличение
+			delay = time.Duration(math.Pow(2, float64(attempt))) * BaseDelay
+
+		}
+
+		resp, err := client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetHeader("Accept-Encoding", "gzip").
+			SetBody(compressed).
+			Post(fmt.Sprintf("http://%s/updates/", serverAddr))
+
+		if err == nil && resp.StatusCode() == http.StatusOK {
+			fmt.Println("Metrics sent successfully")
+			return nil
+		}
+
+		lastErr = fmt.Errorf("send failed: status=%d, err=%v", resp.StatusCode(), err)
+		fmt.Printf("Send attempt %d failed: %v\n", attempt, lastErr)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("unexpected status code for metrics: %d", resp.StatusCode())
-	}
+	// resp, err := client.R().
+	// 	SetHeader("Content-Type", "application/json").
+	// 	SetHeader("Content-Encoding", "gzip").
+	// 	SetHeader("Accept-Encoding", "gzip").
+	// 	// SetBody(jsonData).
+	// 	SetBody(compressed).
+	// 	Post(fmt.Sprintf("http://%s/updates/", serverAddr))
+
+	// if err != nil {
+	// 	return fmt.Errorf("failed to send metrics: %w", err)
+	// }
+
+	// if resp.StatusCode() != http.StatusOK {
+	// 	return fmt.Errorf("unexpected status code for metrics: %d", resp.StatusCode())
+	// }
 
 	return nil
 }
