@@ -110,11 +110,11 @@ func (s *MemStorage) UpdateMetric(ctx context.Context, metric *model.Metrics) er
 		return err
 	}
 
-	// if s.PingDatabase(ctx) == nil {
-	// 	if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
-	// 		log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
-	// 	}
-	// }
+	if s.PingDatabase(ctx) == nil {
+		if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
+		}
+	}
 
 	if s.immediatelyFlush {
 		if err := s.SaveToFile(); err != nil {
