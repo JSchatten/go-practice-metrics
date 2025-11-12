@@ -36,6 +36,8 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 		fileRepo = fileRepos.NewFileRepository(filePath)
 	}
 
+	var repoDBConnected = false
+
 	repo, err := postgresqlRepo.NewMetricRepo(postgresDSN)
 	if err != nil {
 		log.Logger.Warn().Err(err).Msg("Failed to connect to postgres")
@@ -48,6 +50,7 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 			if err := repo.Migrate(ctx); err != nil {
 				log.Logger.Warn().Err(err).Msg("Failed to migrate database")
 			}
+			repoDBConnected = true
 		}
 	}
 
@@ -57,7 +60,7 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 		dbRepo:   repo,
 	}
 
-	if fileRepo != nil {
+	if fileRepo != nil && !repoDBConnected {
 		if loadFromFile {
 			err := storage.loadFromDisk()
 			if err != nil {

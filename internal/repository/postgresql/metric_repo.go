@@ -117,7 +117,8 @@ func (r *MetricRepo) UpdateMetric(ctx context.Context, m *models.Metrics) error 
 		args = []interface{}{m.ID, m.MType, m.Value}
 	case "counter":
 		query = `INSERT INTO metrics (id, type, delta) VALUES ($1, $2, $3)
-	             ON CONFLICT (id) DO UPDATE SET delta = metrics.delta + EXCLUDED.delta`
+	             ON CONFLICT (id) DO UPDATE SET delta = metrics.delta`
+		//  ON CONFLICT (id) DO UPDATE SET delta = metrics.delta + EXCLUDED.delta`
 		args = []interface{}{m.ID, m.MType, m.Delta}
 	default:
 		return models.ErrUnknownMetricType
