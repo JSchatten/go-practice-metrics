@@ -65,7 +65,7 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 		Post(fmt.Sprintf("http://%s/updates/", serverAddr))
 
 	if err != nil {
-		return fmt.Errorf("failed to send metrics")
+		return fmt.Errorf("failed to send metrics: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {

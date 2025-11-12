@@ -23,7 +23,8 @@ run_agent:
 
 test_by_bin: build_all
 # 	./metricstest  -test.v  -test.run=^TestIteration10$
-	./metricstest  -test.v -source-path=./. -test.run=^TestIteration11$
+# 	./metricstest  -test.v -source-path=./. -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
+	./metricstest   -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
 # 	./metricstest  -test.v -test.run=^TestIteration13$ -source-path=./.
 # 	-server-binary-path=$(build_server_out)/server
 # 	./metricstest  -test.v -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
