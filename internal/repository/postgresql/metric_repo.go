@@ -57,13 +57,11 @@ func (r *MetricRepo) Migrate(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	// Проверим соединение
 	if err := db.Ping(); err != nil {
 		log.Logger.Error().Err(err).Msg("Failed to ping database")
 		return err
 	}
 
-	// Создаём экземпляр драйвера миграций
 	driver, err := pgxMigrate.WithInstance(db, &pgxMigrate.Config{})
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("Failed to create migrate driver instance")
@@ -80,7 +78,6 @@ func (r *MetricRepo) Migrate(ctx context.Context) error {
 		return err
 	}
 
-	// Выполняем миграции
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
 		log.Logger.Error().Err(err).Msg("Migration failed")
@@ -107,6 +104,8 @@ func (r *MetricRepo) GetMetricByID(ctx context.Context, id string) (*models.Metr
 }
 
 func (r *MetricRepo) UpdateMetric(ctx context.Context, m *models.Metrics) error {
+	// принимаем новое значение
+	// расчет нового - дело уже на уровне репозитория
 	var query string
 	var args []interface{}
 
@@ -118,8 +117,6 @@ func (r *MetricRepo) UpdateMetric(ctx context.Context, m *models.Metrics) error 
 	case "counter":
 		query = `INSERT INTO metrics (id, type, delta) VALUES ($1, $2, $3)
 				 ON CONFLICT (id) DO UPDATE SET delta = metrics.delta + EXCLUDED.delta`
-		//  ON CONFLICT (id) DO UPDATE SET delta = metrics.delta`
-		//  ON CONFLICT (id) DO UPDATE SET delta = metrics.delta + EXCLUDED.delta`
 		args = []interface{}{m.ID, m.MType, m.Delta}
 	default:
 		return models.ErrUnknownMetricType

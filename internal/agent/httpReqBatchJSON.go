@@ -60,6 +60,8 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 
 	var lastErr error
 	var delay time.Duration
+
+	// TODO Это во флаги по-хорошему, но кто знает. что будет дальше
 	const MaxRetries = 5
 	const RetryTimeoutDelta = 2 * time.Second
 	const BaseDelay = 1 * time.Second
@@ -88,22 +90,6 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 		lastErr = fmt.Errorf("send failed: status=%d, err=%v", resp.StatusCode(), err)
 		fmt.Printf("Send attempt %d failed: %v\n", attempt, lastErr)
 	}
-
-	// resp, err := client.R().
-	// 	SetHeader("Content-Type", "application/json").
-	// 	SetHeader("Content-Encoding", "gzip").
-	// 	SetHeader("Accept-Encoding", "gzip").
-	// 	// SetBody(jsonData).
-	// 	SetBody(compressed).
-	// 	Post(fmt.Sprintf("http://%s/updates/", serverAddr))
-
-	// if err != nil {
-	// 	return fmt.Errorf("failed to send metrics: %w", err)
-	// }
-
-	// if resp.StatusCode() != http.StatusOK {
-	// 	return fmt.Errorf("unexpected status code for metrics: %d", resp.StatusCode())
-	// }
 
 	return nil
 }

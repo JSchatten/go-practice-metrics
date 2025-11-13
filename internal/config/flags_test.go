@@ -110,7 +110,8 @@ func TestInitServerFlags_PriorityFlagOverDefault(t *testing.T) {
 
 func TestInitServerFlags_DefaultValue(t *testing.T) {
 	clearFlags()
-	defer withEnv("ADDRESS", "")()
+	// не нужно, т.к. по умолчанию localhost:8080
+	// defer withEnv("ADDRESS", "")()
 	defer withEnv("FILE_STORAGE_PATH", "")()
 	defer withEnv("STORE_INTERVAL", "")()
 	defer withEnv("RESTORE", "")()
@@ -118,18 +119,17 @@ func TestInitServerFlags_DefaultValue(t *testing.T) {
 
 	os.Args = []string{"cmd"}
 
-	// serverFlags, err := InitServerFlags()
-	_, err := InitServerFlags()
+	serverFlags, err := InitServerFlags()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// if serverFlags.ServerAddr != "localhost:8080" {
-	// 	t.Errorf("expected default ServerAddr=localhost:8080, got %s", serverFlags.ServerAddr)
-	// }
-	// if serverFlags.PostgresDSN != "" {
-	// 	t.Errorf("expected empty DSN by default, got %s", serverFlags.PostgresDSN)
-	// }
+	if serverFlags.ServerAddr != "localhost:8080" {
+		t.Errorf("expected default ServerAddr=localhost:8080, got %s", serverFlags.ServerAddr)
+	}
+	if serverFlags.PostgresDSN != "" {
+		t.Errorf("expected empty DSN by default, got %s", serverFlags.PostgresDSN)
+	}
 }
 
 func TestInitFlags_UnknownArgs(t *testing.T) {
@@ -145,8 +145,6 @@ func TestInitFlags_UnknownArgs(t *testing.T) {
 	}
 }
 
-// === НОВЫЕ ТЕСТЫ ДЛЯ DATABASE_DSN ===
-
 func TestInitServerFlags_DSNFlagEmpty_Error(t *testing.T) {
 	clearFlags()
 	defer withEnv("DATABASE_DSN", "")()
@@ -159,17 +157,17 @@ func TestInitServerFlags_DSNFlagEmpty_Error(t *testing.T) {
 	}
 }
 
-// func TestInitServerFlags_DSNEnvEmpty_Error(t *testing.T) {
-// 	clearFlags()
-// 	defer withEnv("DATABASE_DSN", "")()
+func TestInitServerFlags_DSNEnvEmpty_Error(t *testing.T) {
+	clearFlags()
+	defer withEnv("DATABASE_DSN", "")()
 
-// 	withEnv("DATABASE_DSN", "")()
+	withEnv("DATABASE_DSN", "")()
 
-// 	_, err := InitServerFlags()
-// 	if err != ErrInvalidDSN {
-// 		t.Fatalf("expected ErrInvalidDSN when DATABASE_DSN is empty, got %v", err)
-// 	}
-// }
+	_, err := InitServerFlags()
+	if err != ErrInvalidDSN {
+		t.Fatalf("expected ErrInvalidDSN when DATABASE_DSN is empty, got %v", err)
+	}
+}
 
 func TestInitServerFlags_DSNFlagValid_OK(t *testing.T) {
 	clearFlags()

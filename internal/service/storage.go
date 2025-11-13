@@ -176,6 +176,8 @@ func (s *MemStorage) GetMetric(ctx context.Context, id string) *model.Metrics {
 }
 
 func (s *MemStorage) updateMetricInMemory(metricIn *model.Metrics) error {
+	// принимаем новое значение
+	// расчет нового - дело уже на уровне репозитория
 	switch metricIn.MType {
 	case model.Gauge:
 		if metricIn.Value == nil {

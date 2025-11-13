@@ -97,7 +97,8 @@ func TestGzipMiddleware_DoesNotCompress_BinaryContentType(t *testing.T) {
 
 	r.GET("/image", func(c *gin.Context) {
 		c.Data(http.StatusOK, "image/png", []byte{0x89, 0x50, 0x4E, 0x47}) // PNG
-		//
+		// TODO дописать проверку
+		// TODO почеу-то игнорит переназначение Content-Type на выходе
 		// c.Header("Content-Type", "image/png")
 		// c.Writer.WriteHeader(http.StatusOK)
 		// c.Writer.Write([]byte{0x89, 0x50, 0x4E, 0x47})
