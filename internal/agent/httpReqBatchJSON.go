@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -55,7 +56,7 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 
 	compressed, err := CompressGZIP(jsonData)
 	if err != nil {
-		return fmt.Errorf("failed to compress metrics")
+		return errors.New("failed to compress metrics")
 	}
 
 	var lastErr error
@@ -63,7 +64,7 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 
 	// TODO Это во флаги по-хорошему, но кто знает. что будет дальше
 	const MaxRetries = 5
-	const RetryTimeoutDelta = 2 * time.Second
+	// const RetryTimeoutDelta = 2 * time.Second
 	const BaseDelay = 1 * time.Second
 
 	for attempt := 0; attempt <= 4; attempt++ {
