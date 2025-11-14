@@ -10,10 +10,8 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func sendMetrics(serverAdress string, memStorage *storage.MemStorage) error {
+func sendMetrics(client *resty.Client, serverAdress string, memStorage *storage.MemStorage) error {
 	// http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-	// fmt.Printf("Отправка метрик: %s\n", memStorage.String())
-	client := resty.New()
 
 	for _, metric := range memStorage.Metrics {
 		// Проверяем, что метрика имеет хотя бы одно из значений

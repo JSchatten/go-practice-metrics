@@ -73,16 +73,18 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 
 	ctx := context.Background()
 
+	httpClient := CreateHTTPClient()
+
 	for {
 		select {
 		case <-tickerSend.C:
 			log.Println("Sending metrics...")
 			// Старый POST запрос
-			// err := sendMetrics(cfg.ServerAddr, storage)
-			// Новый POST запрос JSON
-			// err := sendMetricsJSON(cfg.ServerAddr, storage)
+			// err := sendMetrics(httpClient, cfg.ServerAddr, storage)
+			// Старый POST запрос JSON
+			// err := sendMetricsJSON(httpClient, cfg.ServerAddr, storage)
 			// Новый POST запрос JSON с batching
-			err := sendMetricsBatchJSON(cfg.ServerAddr, storage)
+			err := sendMetricsBatchJSON(httpClient, cfg.ServerAddr, storage)
 
 			if err != nil {
 				log.Printf("Error sending metrics: %v\n", err)
@@ -95,7 +97,7 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			runtime.ReadMemStats(&memStats)
 			// Большой список, 1e9 для перевода в секунды
 			var errorsUpdating []error
-
+			// Выглядит несуразно, но работает; думаю в будущем выделить в отдльеный объект
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys))))

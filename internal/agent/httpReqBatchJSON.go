@@ -12,9 +12,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) error {
-	client := resty.New()
-
+func sendMetricsBatchJSON(client *resty.Client, serverAddr string, memStorage *storage.MemStorage) error {
 	var sendingMetrics []MetricsModel.Metrics
 
 	for _, metric := range memStorage.Metrics {
