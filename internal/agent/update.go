@@ -58,6 +58,13 @@ func getMetricCount(id string, delta int64) *MetricsModel.Metrics {
 }
 
 // Функция для обновления метрик из runtime
+
+func addError(errorsUpdating *[]error, err error) {
+	if err != nil {
+		*errorsUpdating = append(*errorsUpdating, err)
+	}
+}
+
 func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, done <-chan struct{}) {
 	tickerCollect := time.NewTicker(cfg.PollInterval)
 	tickerSend := time.NewTicker(cfg.ReportInterval)
@@ -88,53 +95,51 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			runtime.ReadMemStats(&memStats)
 			// Большой список, 1e9 для перевода в секунды
 			var errorsUpdating []error
-			errorsUpdating = append(errorsUpdating,
-				storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))),
-				storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))),
-				storage.UpdateMetric(ctx, getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("Frees", float64(memStats.Frees))),
-				storage.UpdateMetric(ctx, getMetricGauge("GCCPUFraction", memStats.GCCPUFraction)),
-				storage.UpdateMetric(ctx, getMetricGauge("GCSys", float64(memStats.GCSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapIdle", float64(memStats.HeapIdle))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapInuse", float64(memStats.HeapInuse))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapObjects", float64(memStats.HeapObjects))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapReleased", float64(memStats.HeapReleased))),
-				storage.UpdateMetric(ctx, getMetricGauge("HeapSys", float64(memStats.HeapSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("LastGC", float64(memStats.LastGC)/1e9)),
-				storage.UpdateMetric(ctx, getMetricGauge("Lookups", float64(memStats.Lookups))),
-				storage.UpdateMetric(ctx, getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse))),
-				storage.UpdateMetric(ctx, getMetricGauge("MCacheSys", float64(memStats.MCacheSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse))),
-				storage.UpdateMetric(ctx, getMetricGauge("MSpanSys", float64(memStats.MSpanSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("Mallocs", float64(memStats.Mallocs))),
-				storage.UpdateMetric(ctx, getMetricGauge("NextGC", float64(memStats.NextGC))),
-				storage.UpdateMetric(ctx, getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC))),
-				storage.UpdateMetric(ctx, getMetricGauge("NumGC", float64(memStats.NumGC))),
-				storage.UpdateMetric(ctx, getMetricGauge("OtherSys", float64(memStats.OtherSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9)),
-				storage.UpdateMetric(ctx, getMetricGauge("StackInuse", float64(memStats.StackInuse))),
-				storage.UpdateMetric(ctx, getMetricGauge("StackSys", float64(memStats.StackSys))),
-				storage.UpdateMetric(ctx, getMetricGauge("Sys", float64(memStats.Sys))),
-				storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc))),
-			)
+
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Frees", float64(memStats.Frees))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("GCCPUFraction", memStats.GCCPUFraction)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("GCSys", float64(memStats.GCSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapIdle", float64(memStats.HeapIdle))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapInuse", float64(memStats.HeapInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapObjects", float64(memStats.HeapObjects))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapReleased", float64(memStats.HeapReleased))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapSys", float64(memStats.HeapSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("LastGC", float64(memStats.LastGC)/1e9)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Lookups", float64(memStats.Lookups))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MCacheSys", float64(memStats.MCacheSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MSpanSys", float64(memStats.MSpanSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Mallocs", float64(memStats.Mallocs))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NextGC", float64(memStats.NextGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NumGC", float64(memStats.NumGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("OtherSys", float64(memStats.OtherSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("StackInuse", float64(memStats.StackInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("StackSys", float64(memStats.StackSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Sys", float64(memStats.Sys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc))))
+
 			// Дополнительные
-			errorsUpdating = append(errorsUpdating,
-				storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100)))),
-			)
+			storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100))))
+
 			pollCnt := storage.GetMetric(ctx, "PollCount")
 			if pollCnt == nil {
-				errorsUpdating = append(
-					errorsUpdating,
-					storage.UpdateMetric(ctx, getMetricCount("PollCount", 1)),
-				)
+				addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricCount("PollCount", 1)))
 			} else {
-				errorsUpdating = append(
-					errorsUpdating,
-					storage.UpdateMetric(ctx, getMetricCount("PollCount", *pollCnt.Delta+1)),
-				)
+				addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricCount("PollCount", *pollCnt.Delta+1)))
 			}
-			log.Printf("Some errors, when collect metrics: %v", errorsUpdating)
+			if len(errorsUpdating) > 0 {
+				for _, err := range errorsUpdating {
+					log.Printf("Error updating metric: %v", err)
+				}
+				errorsUpdating = []error{}
+			}
 			log.Println("Collecting metrics done")
 		case <-done:
 			log.Println("Stop processing metrics")
