@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"time"
 
@@ -63,18 +62,23 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 	var delay time.Duration
 
 	// TODO Это во флаги по-хорошему, но кто знает. что будет дальше
-	const MaxRetries = 5
 	// const RetryTimeoutDelta = 2 * time.Second
-	const BaseDelay = 1 * time.Second
+	const RetryTimeoutDelta = 2
+	const MaxRetries = 5
+	// const BaseDelay = 1 * time.Second
+	const AttemptCount = 5
 
-	for attempt := 0; attempt <= 4; attempt++ {
+	for attempt := range AttemptCount {
 		if attempt > 0 {
 			fmt.Printf("Retry %d/%d in %v...\n", attempt, MaxRetries, delay)
 			time.Sleep(delay)
-			// delay += RetryTimeoutDelta * time.Second // Линейное увеличение
-			delay = time.Duration(math.Pow(2, float64(attempt))) * BaseDelay
-
+			delay += RetryTimeoutDelta * time.Second // Линейное увеличение
+			// delay = time.Duration(math.Pow(2, float64(attempt))) * BaseDelay
 		}
+		// if attempt == MaxRetries {
+		// 	lastErr = fmt.Errorf("ended with max retries: %w", lastErr)
+		// 	break
+		// }
 
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
@@ -88,9 +92,9 @@ func sendMetricsBatchJSON(serverAddr string, memStorage *storage.MemStorage) err
 			return nil
 		}
 
-		lastErr = fmt.Errorf("send failed: status=%d, err=%v", resp.StatusCode(), err)
+		lastErr = fmt.Errorf("send failed: status=%d, err=%w", resp.StatusCode(), err)
 		fmt.Printf("Send attempt %d failed: %v\n", attempt, lastErr)
 	}
 
-	return nil
+	return lastErr
 }
