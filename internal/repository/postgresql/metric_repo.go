@@ -3,8 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
+	"time"
 
 	models "github.com/JSchatten/go-practice-metrics/internal/model"
 	"github.com/golang-migrate/migrate/v4"
@@ -12,6 +15,8 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // активация драйвера дл миграции
@@ -126,12 +131,46 @@ func (r *MetricRepo) UpdateMetric(ctx context.Context, m *models.Metrics) error 
 	return err
 }
 
+// тут только проверка, деление на группы метрик дальше
 func (r *MetricRepo) UpdateMetricBatch(ctx context.Context, metrics []models.Metrics) error {
 	if len(metrics) == 0 {
 		return nil
 	}
 
-	// Разделяем метрики
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := range maxRetries {
+		if attempt > 0 {
+			delay := time.Duration(attempt) * 200 * time.Millisecond
+			log.Logger.Warn().Int("attempt", attempt).Dur("delay", delay).Msg("Retrying batch update")
+			time.Sleep(delay)
+		}
+
+		lastErr = r.execBatchUpsert(ctx, metrics)
+		if lastErr == nil {
+			return nil
+		}
+
+		if !isRetriableError(lastErr) {
+			log.Logger.Error().Err(lastErr).Msg("Non-retriable error during batch update")
+			break
+		}
+
+		log.Logger.Warn().Err(lastErr).Int("attempt", attempt).Msg("Retriable error, retrying...")
+	}
+
+	return fmt.Errorf("failed to update metric batch after %d attempts: %w", maxRetries, lastErr)
+}
+
+func (r *MetricRepo) Ping(ctx context.Context) error {
+	// сюда можно добавить проверку соединения rety
+	// но мне кажется уже оверкил
+	// пинг сам по себе не очень надежен и тяжелый
+	return r.db.Ping(ctx)
+}
+
+func (r *MetricRepo) execBatchUpsert(ctx context.Context, metrics []models.Metrics) error {
 	var gauges []models.Metrics
 	var counters []models.Metrics
 
@@ -150,32 +189,20 @@ func (r *MetricRepo) UpdateMetricBatch(ctx context.Context, metrics []models.Met
 		}
 	}
 
-	// Обрабатываем batch
-	return r.execBatchUpsert(ctx, gauges, counters)
-
-}
-
-func (r *MetricRepo) Ping(ctx context.Context) error {
-	return r.db.Ping(ctx)
-}
-
-func (r *MetricRepo) execBatchUpsert(ctx context.Context, gauges, counters []models.Metrics) error {
 	conn, err := r.db.Acquire(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to acquire connection: %w", err)
+		return err
 	}
 	defer conn.Release()
 
 	rawConn := conn.Conn()
 
-	// Подготавливаем и выполняем gauge, если есть
 	if len(gauges) > 0 {
-		if err := r.prepareAndUpsertGauges(ctx, conn.Conn(), gauges); err != nil {
+		if err := r.prepareAndUpsertGauges(ctx, rawConn, gauges); err != nil {
 			return err
 		}
 	}
 
-	// Подготавливаем и выполняем counter, если есть
 	if len(counters) > 0 {
 		if err := r.prepareAndUpsertCounters(ctx, rawConn, counters); err != nil {
 			return err
@@ -183,12 +210,14 @@ func (r *MetricRepo) execBatchUpsert(ctx context.Context, gauges, counters []mod
 	}
 
 	return nil
+
 }
 
 func (r *MetricRepo) prepareAndUpsertGauges(ctx context.Context, conn *pgx.Conn, gauges []models.Metrics) error {
 	const stmtName = "upsert_gauge_batch"
+	// если уже подготовлен, PostgreSQL вернёт ошибку дубликата,
+	// но pgx её игнорирует (вроде как)
 
-	// Подготавливаем запрос — если уже подготовлен, pgx ничего не сделает (PostgreSQL вернёт ошибку дубликата, но pgx её игнорирует)
 	_, err := conn.Prepare(ctx, stmtName, `
 		INSERT INTO metrics (id, type, value) 
 		VALUES (unnest($1::text[]), 'gauge', unnest($2::double precision[]))
@@ -207,7 +236,6 @@ func (r *MetricRepo) prepareAndUpsertGauges(ctx context.Context, conn *pgx.Conn,
 		values[i] = *g.Value
 	}
 
-	// Выполняем
 	_, err = conn.Exec(ctx, stmtName, ids, values)
 	return err
 }
@@ -225,7 +253,6 @@ func (r *MetricRepo) prepareAndUpsertCounters(ctx context.Context, conn *pgx.Con
 		return fmt.Errorf("failed to prepare statement %s: %w", stmtName, err)
 	}
 
-	// Собираем данные
 	ids := make([]string, len(counters))
 	deltas := make([]int64, len(counters))
 	for i, c := range counters {
@@ -233,7 +260,38 @@ func (r *MetricRepo) prepareAndUpsertCounters(ctx context.Context, conn *pgx.Con
 		deltas[i] = *c.Delta
 	}
 
-	// Выполняем
 	_, err = conn.Exec(ctx, stmtName, ids, deltas)
 	return err
+}
+
+func isRetriableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case
+			// я бы добавил ещё 53300 (TooManyConnections)
+			pgerrcode.SerializationFailure,
+			pgerrcode.DeadlockDetected,
+			pgerrcode.ConnectionException,
+			pgerrcode.ConnectionDoesNotExist,
+			pgerrcode.ConnectionFailure,
+			pgerrcode.SQLClientUnableToEstablishSQLConnection,
+			pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
+			pgerrcode.TooManyConnections:
+			return true
+		}
+	}
+
+	// сетевые ошибки
+	if errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, io.EOF) {
+		return true
+	}
+
+	return false
 }

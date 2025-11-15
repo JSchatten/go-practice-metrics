@@ -128,7 +128,7 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc))))
 
 			// Дополнительные
-			storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100)))))
 
 			pollCnt := storage.GetMetric(ctx, "PollCount")
 			if pollCnt == nil {
