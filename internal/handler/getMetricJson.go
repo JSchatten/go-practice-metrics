@@ -38,8 +38,9 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			BodyInvalidMetricType(c)
 			return
 		}
+		logZero.Logger.Info().Msgf("ValueHandlerJSON metrics in = %s", metricIn.String())
 
-		metric := storage.GetMetric(metricIn.ID)
+		metric := storage.GetMetric(c, metricIn.ID)
 		if metric == nil {
 			MetricNotFound(c)
 			return
@@ -51,6 +52,7 @@ func ValueHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, metric)
+		logZero.Logger.Info().Msgf("ValueHandlerJSON metrics out = %s", metric.String())
 
 	}
 }

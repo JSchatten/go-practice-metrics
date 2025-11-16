@@ -7,6 +7,7 @@ import (
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storageService "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
+	logZero "github.com/rs/zerolog/log"
 )
 
 const (
@@ -21,12 +22,22 @@ func LiveHandler() gin.HandlerFunc {
 	}
 }
 
+func PingDatabaseHandler(storage storageService.Storage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := storage.PingDatabase(c); err != nil {
+			logZero.Logger.Error().Err(err).Msg("DB ping failed")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot connect to database"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	}
+}
+
 // Обработчик для корневого пути /
 func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Method not allowed"})
-			// methodNotAllowed(c)
+			MethodNotAllowed(c)
 			return
 		}
 

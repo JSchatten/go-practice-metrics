@@ -35,19 +35,16 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 			case model.ErrInvalidCounterValue, model.ErrInvalidGaugeValue:
 				InvalidValueFormat(c, err)
 			default:
-				// abortWithError(c, err)
-				// InternalError(c)
 				BadRequestVerbose(c, err)
 			}
 			return
 		}
 
 		// Обновление метрики
-		if err := storage.UpdateMetric(metric); err != nil {
+		if err := storage.UpdateMetric(c, metric); err != nil {
 			FailedToUpdateMetric(c, err)
 			return
 		}
-		// fmt.Printf("Metrics %+v added \n", metric)
 		c.JSON(http.StatusOK, gin.H{"status": "Metric updated"})
 	}
 }

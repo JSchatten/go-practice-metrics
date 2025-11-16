@@ -26,7 +26,7 @@ func ValueHandler(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		metric := storage.GetMetric(metricName)
+		metric := storage.GetMetric(c, metricName)
 
 		if metric == nil {
 			MetricNotFound(c)
@@ -53,7 +53,14 @@ func ValueHandler(storage storage.Storage) gin.HandlerFunc {
 		}
 
 		c.Writer.Header().Set("Content-Type", "text/plain")
-		c.Writer.WriteString(valueStr)
+		_, err := c.Writer.WriteString(valueStr)
+		if err != nil {
+			logZero.Logger.Fatal().
+				Err(err).
+				Msg("Failed to write response")
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 		c.AbortWithStatus(http.StatusOK)
 	}
 }

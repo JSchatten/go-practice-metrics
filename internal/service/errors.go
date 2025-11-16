@@ -1,13 +1,19 @@
 package service
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Общие ошибки
 var (
-	ErrUnknownMetricType = fmt.Errorf("unknown metric type")
-	ErrValueRequired     = fmt.Errorf("value is required for gauge metric")
-	ErrDeltaRequired     = fmt.Errorf("delta is required for counter metric")
-	ErrMetricNotFound    = fmt.Errorf("metric not found")
+	ErrUnknownMetricType        = errors.New("unknown metric type")
+	ErrValueRequired            = errors.New("value is required for gauge metric")
+	ErrDeltaRequired            = errors.New("delta is required for counter metric")
+	ErrMetricNotFound           = errors.New("metric not found")
+	ErrMetricSaveFailedDatabase = errors.New("failed to save metric to database")
+	ErrMetricSaveFailedFile     = errors.New("failed to save metric to file")
+	ErrMetricSaveMemory         = errors.New("failed to save metric to memory")
 )
 
 // Форматированные ошибки

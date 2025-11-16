@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -23,6 +25,18 @@ type Metrics struct {
 }
 
 // Добавленный код для Metrics
+
+// Validate checks if the Metrics instance is valid.
+func (m *Metrics) String() string {
+	if m == nil {
+		return "<nil>"
+	}
+	s, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Sprintf("<error> %s", err)
+	}
+	return string(s)
+}
 
 // NewMetrics creates and validates a Metrics instance from raw values.
 func NewMetrics(id, mType, valueStr string) (*Metrics, error) {

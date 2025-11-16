@@ -45,18 +45,64 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			case model.ErrUnknownMetricType:
 				BodyInvalidMetricType(c)
 			default:
-				// abortWithError(c, 400, err.Error())
 				BadRequestVerbose(c, err)
 			}
 			return
 		}
 
-		err := storage.UpdateMetric(&metricIn)
+		err := storage.UpdateMetric(c, &metricIn)
 		if err != nil {
 			FailedToUpdateMetric(c, err)
 			return
 		}
 
 		c.JSON(http.StatusOK, metricIn)
+		logZero.Logger.Info().Msgf("UpdateHandlerJSON metrics in = %s", metricIn.String())
+	}
+}
+
+func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		logZero.Logger.Info().Msg("UpdateHandlerBatchJSON")
+		if c.Request.Method != http.MethodPost {
+			MethodNotAllowed(c)
+			return
+		}
+
+		var metricsIn []model.Metrics
+		decoder := json.NewDecoder(c.Request.Body)
+		if err := decoder.Decode(&metricsIn); err != nil {
+			BodyInvalidJSON(c)
+			return
+		}
+
+		// Валидация через метод
+		for _, elem := range metricsIn {
+			if err := elem.Validate(); err != nil {
+				logZero.Logger.Error().Err(err).Msgf("Validate error %+v", elem)
+				switch err {
+				case model.ErrEmptyMetricID, model.ErrEmptyMetricType:
+					BodyMissingFields(c)
+				case model.ErrDeltaRequired:
+					DeltaNotProvided(c)
+				case model.ErrValueRequired:
+					ValueNotProvided(c)
+				case model.ErrUnknownMetricType:
+					BodyInvalidMetricType(c)
+				default:
+					BadRequestVerbose(c, err)
+				}
+				// Прерываем, если в батче есть невалидные данные
+				return
+			}
+		}
+
+		err := storage.UpdateMetricBatch(c, &metricsIn)
+		if err != nil {
+			FailedToUpdateMetric(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, metricsIn)
 	}
 }

@@ -1,7 +1,8 @@
 package agent
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"math/rand/v2"
 	"runtime"
 	"time"
@@ -57,68 +58,93 @@ func getMetricCount(id string, delta int64) *MetricsModel.Metrics {
 }
 
 // Функция для обновления метрик из runtime
+
+func addError(errorsUpdating *[]error, err error) {
+	if err != nil {
+		*errorsUpdating = append(*errorsUpdating, err)
+	}
+}
+
 func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, done <-chan struct{}) {
 	tickerCollect := time.NewTicker(cfg.PollInterval)
 	tickerSend := time.NewTicker(cfg.ReportInterval)
 	defer tickerCollect.Stop()
 	defer tickerSend.Stop()
 
+	ctx := context.Background()
+
+	httpClient := CreateHTTPClient()
+
 	for {
 		select {
 		case <-tickerSend.C:
-			fmt.Println("Sending metrics...")
+			log.Println("Sending metrics...")
 			// Старый POST запрос
-			// err := sendMetrics(cfg.ServerAddr, storage)
-			err := sendMetricsJSON(cfg.ServerAddr, storage)
+			// err := sendMetrics(httpClient, cfg.ServerAddr, storage)
+			// Старый POST запрос JSON
+			// err := sendMetricsJSON(httpClient, cfg.ServerAddr, storage)
+			// Новый POST запрос JSON с batching
+			err := sendMetricsBatchJSON(httpClient, cfg.ServerAddr, storage)
 
 			if err != nil {
-				fmt.Printf("Error sending metrics: %v\n", err)
+				log.Printf("Error sending metrics: %v\n", err)
 			} else {
-				fmt.Println("Sended successful")
+				log.Println("Sended successful")
 			}
 		case <-tickerCollect.C:
-			fmt.Println("Collecting metrics...")
+			log.Println("Collecting metrics...")
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
 			// Большой список, 1e9 для перевода в секунды
-			storage.UpdateMetric(getMetricGauge("Alloc", float64(memStats.Alloc)))
-			storage.UpdateMetric(getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys)))
-			storage.UpdateMetric(getMetricGauge("Frees", float64(memStats.Frees)))
-			storage.UpdateMetric(getMetricGauge("GCCPUFraction", memStats.GCCPUFraction))
-			storage.UpdateMetric(getMetricGauge("GCSys", float64(memStats.GCSys)))
-			storage.UpdateMetric(getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc)))
-			storage.UpdateMetric(getMetricGauge("HeapIdle", float64(memStats.HeapIdle)))
-			storage.UpdateMetric(getMetricGauge("HeapInuse", float64(memStats.HeapInuse)))
-			storage.UpdateMetric(getMetricGauge("HeapObjects", float64(memStats.HeapObjects)))
-			storage.UpdateMetric(getMetricGauge("HeapReleased", float64(memStats.HeapReleased)))
-			storage.UpdateMetric(getMetricGauge("HeapSys", float64(memStats.HeapSys)))
-			storage.UpdateMetric(getMetricGauge("LastGC", float64(memStats.LastGC)/1e9))
-			storage.UpdateMetric(getMetricGauge("Lookups", float64(memStats.Lookups)))
-			storage.UpdateMetric(getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse)))
-			storage.UpdateMetric(getMetricGauge("MCacheSys", float64(memStats.MCacheSys)))
-			storage.UpdateMetric(getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse)))
-			storage.UpdateMetric(getMetricGauge("MSpanSys", float64(memStats.MSpanSys)))
-			storage.UpdateMetric(getMetricGauge("Mallocs", float64(memStats.Mallocs)))
-			storage.UpdateMetric(getMetricGauge("NextGC", float64(memStats.NextGC)))
-			storage.UpdateMetric(getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC)))
-			storage.UpdateMetric(getMetricGauge("NumGC", float64(memStats.NumGC)))
-			storage.UpdateMetric(getMetricGauge("OtherSys", float64(memStats.OtherSys)))
-			storage.UpdateMetric(getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9))
-			storage.UpdateMetric(getMetricGauge("StackInuse", float64(memStats.StackInuse)))
-			storage.UpdateMetric(getMetricGauge("StackSys", float64(memStats.StackSys)))
-			storage.UpdateMetric(getMetricGauge("Sys", float64(memStats.Sys)))
-			storage.UpdateMetric(getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc)))
+			var errorsUpdating []error
+			// Выглядит несуразно, но работает; думаю в будущем выделить в отдльеный объект
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Alloc", float64(memStats.Alloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Frees", float64(memStats.Frees))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("GCCPUFraction", memStats.GCCPUFraction)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("GCSys", float64(memStats.GCSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapIdle", float64(memStats.HeapIdle))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapInuse", float64(memStats.HeapInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapObjects", float64(memStats.HeapObjects))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapReleased", float64(memStats.HeapReleased))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("HeapSys", float64(memStats.HeapSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("LastGC", float64(memStats.LastGC)/1e9)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Lookups", float64(memStats.Lookups))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MCacheSys", float64(memStats.MCacheSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("MSpanSys", float64(memStats.MSpanSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Mallocs", float64(memStats.Mallocs))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NextGC", float64(memStats.NextGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("NumGC", float64(memStats.NumGC))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("OtherSys", float64(memStats.OtherSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9)))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("StackInuse", float64(memStats.StackInuse))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("StackSys", float64(memStats.StackSys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Sys", float64(memStats.Sys))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc))))
+
 			// Дополнительные
-			storage.UpdateMetric(getMetricGauge("RandomValue", float64(rand.IntN(100))))
-			pollCnt := storage.GetMetric("PollCount")
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100)))))
+
+			pollCnt := storage.GetMetric(ctx, "PollCount")
 			if pollCnt == nil {
-				storage.UpdateMetric(getMetricCount("PollCount", 1))
+				addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricCount("PollCount", 1)))
 			} else {
-				storage.UpdateMetric(getMetricCount("PollCount", *pollCnt.Delta+1))
+				addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricCount("PollCount", *pollCnt.Delta+1)))
 			}
-			fmt.Println("Collecting metrics done")
+			if len(errorsUpdating) > 0 {
+				for _, err := range errorsUpdating {
+					log.Printf("Error updating metric: %v", err)
+				}
+				errorsUpdating = []error{}
+			}
+			log.Println("Collecting metrics done")
 		case <-done:
-			fmt.Println("Stop processing metrics")
+			log.Println("Stop processing metrics")
 			return
 		}
 	}

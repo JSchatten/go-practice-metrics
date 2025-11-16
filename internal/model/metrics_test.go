@@ -1,11 +1,148 @@
 package models
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMetrics_String(t *testing.T) {
+	t.Run("gauge - valid", func(t *testing.T) {
+		value := 3.1415
+		metric := &Metrics{
+			ID:    "cpu_usage",
+			MType: Gauge,
+			Value: &value,
+		}
+
+		result := metric.String()
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "cpu_usage", parsed["id"])
+		assert.Equal(t, "gauge", parsed["type"])
+		assert.Equal(t, 3.1415, parsed["value"])
+		_, hasDelta := parsed["delta"]
+		assert.False(t, hasDelta, "delta should not be present")
+	})
+
+	t.Run("counter - valid", func(t *testing.T) {
+		delta := int64(42)
+		metric := &Metrics{
+			ID:    "requests_total",
+			MType: Counter,
+			Delta: &delta,
+		}
+
+		result := metric.String()
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "requests_total", parsed["id"])
+		assert.Equal(t, "counter", parsed["type"])
+		assert.Equal(t, float64(42), parsed["delta"]) // int64 -> float64 при unmarshal
+		_, hasValue := parsed["value"]
+		assert.False(t, hasValue, "value should not be present")
+	})
+
+	t.Run("with hash", func(t *testing.T) {
+		value := 100.0
+		metric := &Metrics{
+			ID:    "memory",
+			MType: Gauge,
+			Value: &value,
+			Hash:  "abc123",
+		}
+
+		result := metric.String()
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "memory", parsed["id"])
+		assert.Equal(t, "gauge", parsed["type"])
+		assert.Equal(t, 100.0, parsed["value"])
+		assert.Equal(t, "abc123", parsed["hash"])
+	})
+
+	t.Run("nil metric", func(t *testing.T) {
+		var metric *Metrics = nil
+
+		result := metric.String()
+
+		assert.Equal(t, "<nil>", result)
+	})
+
+	t.Run("empty fields", func(t *testing.T) {
+		// Хотя Validate() не пройдёт, String() должен работать
+		metric := &Metrics{
+			ID:    "",
+			MType: "",
+			Delta: nil,
+			Value: nil,
+		}
+
+		result := metric.String()
+
+		// Должен вернуть валидный JSON, даже если поля пустые
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "", parsed["id"])
+		assert.Equal(t, "", parsed["type"])
+		_, hasDelta := parsed["delta"]
+		assert.False(t, hasDelta)
+		_, hasValue := parsed["value"]
+		assert.False(t, hasValue)
+	})
+
+	t.Run("zero values - should be included Counter", func(t *testing.T) {
+		delta := int64(0)
+		metric := &Metrics{
+			ID:    "test_zero",
+			MType: Counter,
+			Delta: &delta,
+		}
+
+		result := metric.String()
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "test_zero", parsed["id"])
+		assert.Equal(t, "counter", parsed["type"])
+		assert.Equal(t, float64(0), parsed["delta"]) // 0 — это валидно
+
+	})
+
+	t.Run("zero values - should be included Gauge", func(t *testing.T) {
+		value := 0.0
+		metric := &Metrics{
+			ID:    "test_zero",
+			MType: Counter,
+			Value: &value,
+		}
+
+		result := metric.String()
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal([]byte(result), &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, "test_zero", parsed["id"])
+		assert.Equal(t, "counter", parsed["type"])
+		assert.Equal(t, float64(0), parsed["value"])
+	})
+}
 
 func TestNewMetrics_ValidGauge(t *testing.T) {
 	metric, err := NewMetrics("cpu_load", "gauge", "99.5")

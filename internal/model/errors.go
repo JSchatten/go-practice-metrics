@@ -1,14 +1,14 @@
 package models
 
-import "fmt"
+import "errors"
 
 var (
-	ErrEmptyMetricID       = fmt.Errorf("metric ID cannot be empty")
-	ErrEmptyMetricType     = fmt.Errorf("metric type cannot be empty")
-	ErrUnknownMetricType   = fmt.Errorf("unknown metric type")
-	ErrValueRequired       = fmt.Errorf("value is required for gauge")
-	ErrDeltaRequired       = fmt.Errorf("delta is required for counter")
-	ErrInvalidCounterValue = fmt.Errorf("invalid counter value")
-	ErrInvalidGaugeValue   = fmt.Errorf("invalid gauge value")
-	ErrNilMetric           = fmt.Errorf("metric is nil")
+	ErrEmptyMetricID       = errors.New("metric ID cannot be empty")
+	ErrEmptyMetricType     = errors.New("metric type cannot be empty")
+	ErrUnknownMetricType   = errors.New("unknown metric type")
+	ErrValueRequired       = errors.New("value is required for gauge")
+	ErrDeltaRequired       = errors.New("delta is required for counter")
+	ErrInvalidCounterValue = errors.New("invalid counter value")
+	ErrInvalidGaugeValue   = errors.New("invalid gauge value")
+	ErrNilMetric           = errors.New("metric is nil")
 )

@@ -10,17 +10,17 @@ type FileRepository struct {
 	mxFileAccess sync.Mutex // защищаем доступ к файлу
 }
 
+func NewFileRepository(filePath string) *FileRepository {
+	return &FileRepository{
+		filePath: filePath,
+	}
+}
+
 func (r *FileRepository) FilePath() string {
 	if r == nil {
 		return ""
 	} else {
 		return r.filePath
-	}
-}
-
-func NewFileRepository(filePath string) *FileRepository {
-	return &FileRepository{
-		filePath: filePath,
 	}
 }
 

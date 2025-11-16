@@ -1,11 +1,13 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"time"
 
-	filerepo "github.com/JSchatten/go-practice-metrics/internal/repository"
+	fileRepos "github.com/JSchatten/go-practice-metrics/internal/repository/file"
+	postgresqlRepo "github.com/JSchatten/go-practice-metrics/internal/repository/postgresql"
 
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	"github.com/rs/zerolog/log"
@@ -14,29 +16,51 @@ import (
 type MemStorage struct {
 	Metrics          map[string]*model.Metrics
 	mxDataAccess     sync.RWMutex // Мютекс Rw, для параллельнго чтения
-	fileRepo         *filerepo.FileRepository
+	fileRepo         *fileRepos.FileRepository
+	dbRepo           *postgresqlRepo.MetricRepo
 	immediatelyFlush bool
 }
 
 type Storage interface {
-	UpdateMetric(metric *model.Metrics) error
-	GetMetric(id string) *model.Metrics
+	UpdateMetric(ctx context.Context, metric *model.Metrics) error
+	UpdateMetricBatch(ctx context.Context, metric *[]model.Metrics) error
+	GetMetric(ctx context.Context, id string) *model.Metrics
 	String() string
+	PingDatabase(ctx context.Context) error
 }
 
-func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool) (*MemStorage, error) {
+func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bool, postgresDSN string) (*MemStorage, error) {
 
-	var fileRepo *filerepo.FileRepository
+	var fileRepo *fileRepos.FileRepository
 	if filePath != "" {
-		fileRepo = filerepo.NewFileRepository(filePath)
+		fileRepo = fileRepos.NewFileRepository(filePath)
+	}
+
+	var repoDBConnected = false
+
+	repo, err := postgresqlRepo.NewMetricRepo(postgresDSN)
+	if err != nil {
+		log.Logger.Warn().Err(err).Msg("Failed to connect to postgres")
+	} else {
+		ctx := context.Background()
+		err = repo.Ping(ctx)
+		if err != nil {
+			log.Logger.Warn().Err(err).Msg("No postgres connection, skip processing with database")
+		} else {
+			if err := repo.Migrate(ctx); err != nil {
+				log.Logger.Warn().Err(err).Msg("Failed to migrate database")
+			}
+			repoDBConnected = true
+		}
 	}
 
 	storage := &MemStorage{
 		Metrics:  make(map[string]*model.Metrics),
 		fileRepo: fileRepo,
+		dbRepo:   repo,
 	}
 
-	if fileRepo != nil {
+	if fileRepo != nil && !repoDBConnected {
 		if loadFromFile {
 			err := storage.loadFromDisk()
 			if err != nil {
@@ -54,83 +78,8 @@ func NewMemStorage(filePath string, flushInterval time.Duration, loadFromFile bo
 	return storage, nil
 }
 
-func (s *MemStorage) loadFromDisk() error {
-
-	metricsData, err := s.fileRepo.LoadMetrics()
-
-	if err != nil {
-		log.Logger.Error().Err(err).Msg("Failed to load metrics from file")
-		return err
-	}
-
-	if len(metricsData) == 0 {
-		log.Logger.Warn().Msg("Empty filestorage, init empty slice")
-		metricsData = []byte("[]")
-	}
-
-	var metrics []model.Metrics
-	if err := json.Unmarshal(metricsData, &metrics); err != nil {
-		return NewErrLoadFromFile(s.fileRepo.FilePath(), err)
-	}
-
-	result := make(map[string]*model.Metrics)
-	for i := range metrics {
-		m := metrics[i]
-		result[m.ID] = &m
-	}
-
-	s.mxDataAccess.Lock()
-	defer s.mxDataAccess.Unlock()
-	s.Metrics = result
-	return nil
-}
-
-func (s *MemStorage) startAutoSave(interval time.Duration) {
-	if interval <= 0 {
-		log.Logger.Info().Msg("Ignore interval less than 0, gorutine was stopped")
-		return
-	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	log.Logger.Info().Msg("Starting auto-save")
-
-	for range ticker.C {
-		if err := s.SaveToFile(); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
-		}
-	}
-}
-
-func (s *MemStorage) SaveToFile() error {
-	// Потенциальный дедлок
-	// if s.mxDataAccess.TryLock() {
-	// 	defer s.mxDataAccess.RUnlock()
-	// }
-	// Потенциальный дедлок
-	// s.mxDataAccess.RLock()
-	// defer s.mxDataAccess.RUnlock()
-
-	if s.fileRepo == nil {
-		return nil
-	}
-
-	// Делаем снимок
-	snapshot := make([]model.Metrics, 0, len(s.Metrics))
-	for _, m := range s.Metrics {
-		snapshot = append(snapshot, *m)
-	}
-
-	bytesToSave, err := json.MarshalIndent(snapshot, "", "  ")
-	if err != nil {
-		return NewErrMarshal(err)
-	}
-
-	if err := s.fileRepo.SaveMetrics(bytesToSave); err != nil {
-		return NewErrSaveToFile(s.fileRepo.FilePath(), err)
-	}
-
-	return nil
+func (s *MemStorage) PingDatabase(ctx context.Context) error {
+	return s.dbRepo.Ping(ctx)
 }
 
 func (s *MemStorage) String() string {
@@ -154,58 +103,119 @@ func (s *MemStorage) String() string {
 	return string(metricsStr)
 }
 
-func (s *MemStorage) UpdateMetric(metric *model.Metrics) error {
+func (s *MemStorage) UpdateMetric(ctx context.Context, metric *model.Metrics) error {
 	s.mxDataAccess.Lock()
 	defer s.mxDataAccess.Unlock()
 
-	switch metric.MType {
-	case model.Gauge:
-		if metric.Value == nil {
-			return ErrValueRequired
-		}
-		s.Metrics[metric.ID] = &model.Metrics{
-			ID:    metric.ID,
-			MType: metric.MType,
-			Value: metric.Value,
-		}
-	case model.Counter:
-		if metric.Delta == nil {
-			return ErrDeltaRequired
-		}
-		existing, exists := s.Metrics[metric.ID]
-		if exists && existing.MType == model.Counter {
-			// Добавляем новое значение к существующему
-			newDelta := *existing.Delta + *metric.Delta
-			s.Metrics[metric.ID] = &model.Metrics{
-				ID:    metric.ID,
-				MType: metric.MType,
-				Delta: &newDelta,
-			}
-		} else {
-			// Создаём новую метрику
-			s.Metrics[metric.ID] = &model.Metrics{
-				ID:    metric.ID,
-				MType: metric.MType,
-				Delta: metric.Delta,
-			}
-		}
-	default:
-		return NewErrUnknownMetricType(string(metric.MType))
+	err := s.updateMetricInMemory(metric)
+	if err != nil {
+		log.Logger.Error().Err(err).Msg(ErrMetricSaveMemory.Error())
+		return err
 	}
+
+	if s.PingDatabase(ctx) == nil {
+		// if err := s.dbRepo.UpdateMetric(ctx, s.Metrics[metric.ID]); err != nil {
+		if err := s.dbRepo.UpdateMetric(ctx, metric); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
+		}
+	}
+
 	if s.immediatelyFlush {
 		if err := s.SaveToFile(); err != nil {
-			log.Logger.Error().Err(err).Msgf("Failed to save metrics to file")
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedFile.Error())
 		}
 	}
 	return nil
 }
 
-func (s *MemStorage) GetMetric(id string) *model.Metrics {
+func (s *MemStorage) UpdateMetricBatch(ctx context.Context, metrics *[]model.Metrics) error {
+	s.mxDataAccess.Lock()
+	defer s.mxDataAccess.Unlock()
+
+	for _, elem := range *metrics {
+		err := s.updateMetricInMemory(&elem)
+		if err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveMemory.Error())
+			return err
+		}
+	}
+
+	if s.PingDatabase(ctx) == nil {
+		if err := s.dbRepo.UpdateMetricBatch(ctx, *metrics); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedDatabase.Error())
+		}
+	}
+
+	if s.immediatelyFlush {
+		if err := s.SaveToFile(); err != nil {
+			log.Logger.Error().Err(err).Msg(ErrMetricSaveFailedFile.Error())
+		}
+	}
+	return nil
+}
+
+func (s *MemStorage) GetMetric(ctx context.Context, id string) *model.Metrics {
 	s.mxDataAccess.RLock()
 	defer s.mxDataAccess.RUnlock()
+
+	// Возвращаем из БД, если она жива
+	if s.PingDatabase(ctx) == nil {
+		if metric, err := s.dbRepo.GetMetricByID(ctx, id); err == nil {
+			// TODO убрать после проверки
+			// s.Metrics[metric.ID] = metric
+			return metric
+		}
+	}
+
+	// Иначе берем из памят
 	if metric, exists := s.Metrics[id]; exists {
 		return metric
 	} else {
 		return nil
+	}
+}
+
+func (s *MemStorage) updateMetricInMemory(metricIn *model.Metrics) error {
+	// принимаем новое значение
+	// расчет нового - дело уже на уровне репозитория
+	switch metricIn.MType {
+	case model.Gauge:
+		if metricIn.Value == nil {
+			return ErrValueRequired
+		}
+		updated := &model.Metrics{
+			ID:    metricIn.ID,
+			MType: metricIn.MType,
+			Value: metricIn.Value,
+		}
+		s.Metrics[metricIn.ID] = updated
+		return nil
+
+	case model.Counter:
+		if metricIn.Delta == nil {
+			return ErrDeltaRequired
+		}
+		existing, exists := s.Metrics[metricIn.ID]
+		if exists && existing.MType == model.Counter {
+			newDelta := *existing.Delta + *metricIn.Delta
+			updated := &model.Metrics{
+				ID:    metricIn.ID,
+				MType: metricIn.MType,
+				Delta: &newDelta,
+			}
+			s.Metrics[metricIn.ID] = updated
+			return nil
+		} else {
+			updated := &model.Metrics{
+				ID:    metricIn.ID,
+				MType: metricIn.MType,
+				Delta: metricIn.Delta,
+			}
+			s.Metrics[metricIn.ID] = updated
+			return nil
+		}
+
+	default:
+		return NewErrUnknownMetricType(string(metricIn.MType))
 	}
 }

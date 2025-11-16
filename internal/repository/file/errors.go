@@ -1,14 +1,17 @@
 package repository
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
-	ErrFilePathEmpty = fmt.Errorf("file path is not set")
-	ErrReadFile      = fmt.Errorf("failed to read metrics file")
-	ErrWriteFile     = fmt.Errorf("failed to write metrics file")
-	ErrUnmarshal     = fmt.Errorf("failed to unmarshal metrics from file")
-	ErrMarshal       = fmt.Errorf("failed to marshal metrics")
-	ErrNoData        = fmt.Errorf("no data provided for saving into file")
+	ErrFilePathEmpty = errors.New("file path is not set")
+	ErrReadFile      = errors.New("failed to read metrics file")
+	ErrWriteFile     = errors.New("failed to write metrics file")
+	ErrUnmarshal     = errors.New("failed to unmarshal metrics from file")
+	ErrMarshal       = errors.New("failed to marshal metrics")
+	ErrNoData        = errors.New("no data provided for saving into file")
 )
 
 // Форматированные ошибки

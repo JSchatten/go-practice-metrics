@@ -38,6 +38,7 @@ func main() {
 		cfg.ServerFileFlags.FilePath,
 		cfg.ServerFileFlags.FileInterval,
 		cfg.ServerFileFlags.FileIsRestore,
+		cfg.PostgresDSN,
 	)
 
 	if err != nil {
@@ -55,7 +56,9 @@ func main() {
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
 	router.POST("/update", handlers.UpdateHandlerJSON(storageObj))
+	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))
 	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
+	router.GET("/ping", handlers.PingDatabaseHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 
 	// Запуск сервера в отдельной горутине

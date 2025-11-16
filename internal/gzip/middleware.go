@@ -78,17 +78,6 @@ var noCompressMIME = map[string]bool{
 	"application/msgpack":      true,
 }
 
-// shouldCompressContentType определяет, стоит ли сжимать контент
-// func shouldCompressContentType(contentType string) bool {
-// 	if contentType == "" {
-// 		return true // по умолчанию сжимаем
-// 	}
-// 	return strings.HasPrefix(contentType, "text/") ||
-// 		strings.Contains(contentType, "application/json") ||
-// 		strings.Contains(contentType, "application/xml") ||
-// 		strings.Contains(contentType, "application/javascript")
-// }
-
 func shouldCompressContentType(contentType string) bool {
 	if contentType == "" {
 		return true
