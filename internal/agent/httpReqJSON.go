@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	gzip "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/go-resty/resty/v2"
@@ -46,7 +47,7 @@ func sendMetricsJSON(client *resty.Client, serverAddr string, memStorage *storag
 			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 
-		compressed, err := CompressGZIP(jsonData)
+		compressed, err := gzip.CompressGZIP(jsonData)
 		if err != nil {
 			return fmt.Errorf("failed to compress metric %s: %w", metric.ID, err)
 		}

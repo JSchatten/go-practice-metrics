@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"time"
 
+	gzip "github.com/JSchatten/go-practice-metrics/internal/gzip"
+	hashprocess "github.com/JSchatten/go-practice-metrics/internal/hashprocess"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/go-resty/resty/v2"
 )
 
-func sendMetricsBatchJSON(client *resty.Client, serverAddr string, memStorage *storage.MemStorage) error {
+func sendMetricsBatchJSON(client *resty.Client, serverAddr string, memStorage *storage.MemStorage, HashKey string) error {
 	var sendingMetrics []MetricsModel.Metrics
 
 	for _, metric := range memStorage.Metrics {
@@ -51,19 +53,29 @@ func sendMetricsBatchJSON(client *resty.Client, serverAddr string, memStorage *s
 		return fmt.Errorf("failed to marshal metrics: %w", err)
 	}
 
-	compressed, err := CompressGZIP(jsonData)
+	compressed, err := gzip.CompressGZIP(jsonData)
 	if err != nil {
 		return errors.New("failed to compress metrics")
 	}
+
+	request := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip")
+
+	if HashKey != "" {
+		signOfRequest := hashprocess.Sign(compressed, HashKey)
+		request = request.SetHeader("HashSHA256", signOfRequest)
+	}
+
+	request = request.SetBody(compressed)
 
 	var lastErr error
 	var delay time.Duration
 
 	// TODO Это во флаги по-хорошему, но кто знает. что будет дальше
-	// const RetryTimeoutDelta = 2 * time.Second
 	const RetryTimeoutDelta = 2
 	const MaxRetries = 5
-	// const BaseDelay = 1 * time.Second
 	const AttemptCount = 5
 
 	for attempt := range AttemptCount {
@@ -71,21 +83,13 @@ func sendMetricsBatchJSON(client *resty.Client, serverAddr string, memStorage *s
 			fmt.Printf("Retry %d/%d in %v...\n", attempt, MaxRetries, delay)
 			time.Sleep(delay)
 			delay += RetryTimeoutDelta * time.Second // Линейное увеличение
-			// delay = time.Duration(math.Pow(2, float64(attempt))) * BaseDelay
 		}
-		// if attempt == MaxRetries {
-		// 	lastErr = fmt.Errorf("ended with max retries: %w", lastErr)
-		// 	break
-		// }
 
-		resp, err := client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetHeader("Accept-Encoding", "gzip").
-			SetBody(compressed).
-			Post(fmt.Sprintf("http://%s/updates/", serverAddr))
+		resp, err := request.Post(fmt.Sprintf("http://%s/updates/", serverAddr))
 
 		if err == nil && resp.StatusCode() == http.StatusOK {
+			// По-хорошему бы проверять хэш от сервера
+			// fmt.Println("resp hash: ", resp.Header().Get("HashSHA256"))
 			fmt.Println("Metrics sent successfully")
 			return nil
 		}

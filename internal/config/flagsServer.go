@@ -13,6 +13,7 @@ type ServerFlags struct {
 	ServerAddr      string
 	ServerFileFlags ServerFileFlags
 	PostgresDSN     string
+	HashKey         string
 }
 
 type ServerFileFlags struct {
@@ -28,6 +29,7 @@ func InitServerFlags() (*ServerFlags, error) {
 		fileIntervalSec = new(int)
 		restoreFromFile = new(bool)
 		postgresDSN     = new(string)
+		hashKey         = new(string)
 	)
 
 	*serverAddr = constServerAddr
@@ -61,6 +63,9 @@ func InitServerFlags() (*ServerFlags, error) {
 	if v, exists := os.LookupEnv("DATABASE_DSN"); exists {
 		*postgresDSN = v
 	}
+	if v, exists := os.LookupEnv("KEY"); exists {
+		*hashKey = v
+	}
 
 	// Флаги
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
@@ -68,6 +73,7 @@ func InitServerFlags() (*ServerFlags, error) {
 	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
 	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
 	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
+	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
@@ -109,6 +115,7 @@ func InitServerFlags() (*ServerFlags, error) {
 			FileInterval:  time.Duration(*fileIntervalSec) * time.Second,
 			FileIsRestore: *restoreFromFile,
 		},
+		HashKey: *hashKey,
 	}
 
 	return result, nil

@@ -13,6 +13,7 @@ import (
 
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
+	"github.com/JSchatten/go-practice-metrics/internal/hashprocess"
 
 	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
@@ -51,6 +52,7 @@ func main() {
 	router := gin.New()
 	// middleware
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
+	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
 	router.Use(gzipMiddleaware.GzipMiddleware())
 	// routes
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))

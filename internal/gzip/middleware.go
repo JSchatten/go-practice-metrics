@@ -43,6 +43,7 @@ func GzipMiddleware() gin.HandlerFunc {
 			c.Writer.Header().Del("Content-Encoding")
 			c.Writer.Header().Del("Vary")
 		}
+
 		c.Next()
 	}
 }
