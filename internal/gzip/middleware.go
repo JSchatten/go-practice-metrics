@@ -18,6 +18,7 @@ func GzipMiddleware() gin.HandlerFunc {
 				return
 			}
 			defer gz.Close()
+			c.Request.Header.Del("Content-Encoding")
 			c.Request.Body = gz
 		}
 
@@ -31,18 +32,23 @@ func GzipMiddleware() gin.HandlerFunc {
 		gw := newGzipWriter(gz, c.Writer)
 		c.Writer = gw
 
-		contentType := c.Writer.Header().Get("Content-Type")
+		// Попробую сжимать всё
+		c.Writer.Header().Set("Content-Encoding", "gzip")
+		c.Writer.Header().Set("Vary", "Accept-Encoding")
+		// Удаляем размер, так как он будет неточный из-за сжатия
+		c.Writer.Header().Del("Content-Length")
 
-		if shouldCompressContentType(contentType) {
-			c.Writer.Header().Set("Content-Encoding", "gzip")
-			c.Writer.Header().Set("Vary", "Accept-Encoding")
-			// Удаляем размер, так как он будет неточный из-за сжатия
-			c.Writer.Header().Del("Content-Length")
-		} else {
-			// Удаляем сжатие для бинарных типов, явно
-			c.Writer.Header().Del("Content-Encoding")
-			c.Writer.Header().Del("Vary")
-		}
+		// contentType := c.Writer.Header().Get("Content-Type")
+		// if shouldCompressContentType(contentType) {
+		// 	c.Writer.Header().Set("Content-Encoding", "gzip")
+		// 	c.Writer.Header().Set("Vary", "Accept-Encoding")
+		// 	// Удаляем размер, так как он будет неточный из-за сжатия
+		// 	c.Writer.Header().Del("Content-Length")
+		// } else {
+		// 	// Удаляем сжатие для бинарных типов, явно
+		// 	c.Writer.Header().Del("Content-Encoding")
+		// 	c.Writer.Header().Del("Vary")
+		// }
 
 		c.Next()
 	}

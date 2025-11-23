@@ -28,6 +28,7 @@ vendor/
 
 # binary test
 metricstest
+metricstest_v2
 
 # binary output build
 build/
@@ -37,3 +38,6 @@ tmp/
 
 # debug metrics.json
 metrics.json
+
+# logs from stdout
+*.log

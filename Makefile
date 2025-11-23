@@ -1,16 +1,23 @@
-build_server_out = ./build/server_out
-build_agent_out = ./build/agent_out
+build_server_out_folder = ./build/server_out
+build_agent_out_folder = ./build/agent_out
 
+bs_out = $(build_server_out_folder)/server
+ba_out = $(build_agent_out_folder)/agent
+
+dsn_db = postgres://postgres:admin54321@localhost:5678/postgres
+
+src_server = ./cmd/server/main.go
+src_agent = ./cmd/agent/main.go
 
 build_server:
-	rm -rf $(build_server_out)
-	mkdir -p $(build_server_out)
-	go build -o $(build_server_out)/server ./cmd/server/main.go
+	rm -rf $(build_server_out_folder)
+	mkdir -p $(build_server_out_folder)
+	go build -o $(bs_out) $(src_server)
 
 build_agent:
-	rm -rf $(build_agent_out)
-	mkdir -p $(build_agent_out)
-	go build -o $(build_agent_out)/agent ./cmd/agent/main.go
+	rm -rf $(build_agent_out_folder)
+	mkdir -p $(build_agent_out_folder)
+	go build -o $(ba_out) $(src_agent)
 
 build_all: build_agent build_server
 	@echo "Builded agent and server"
@@ -22,12 +29,7 @@ run_agent:
 	go run cmd/agent/main.go
 
 test_by_bin: build_all
-# 	./metricstest  -test.v  -test.run=^TestIteration10$
-# 	./metricstest  -test.v -source-path=./. -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
-	./metricstest   -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
-# 	./metricstest  -test.v -test.run=^TestIteration13$ -source-path=./.
-# 	-server-binary-path=$(build_server_out)/server
-# 	./metricstest  -test.v -test.run=^TestIteration13$ -agent-binary-path=$(build_agent_out)/agent
+	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db)
 
 test_local:
 	go test ./...
