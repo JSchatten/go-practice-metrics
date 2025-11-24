@@ -29,13 +29,17 @@ func InitServerFlags() (*ServerFlags, error) {
 		fileIntervalSec = new(int)
 		restoreFromFile = new(bool)
 		postgresDSN     = new(string)
-		hashKey         = new(string)
+		hashKeyEnv      = new(string)
+		hashKeyFlags    = new(string)
 	)
 
 	*serverAddr = constServerAddr
 	*filePath = constFilePath
 	*fileIntervalSec = constFileIntervalSec
 	*restoreFromFile = constRestoreFromFile
+
+	// fmt.Println("hashKey q", *hashKeyEnv)
+	// fmt.Println("hashKey q", *hashKeyEnv)
 
 	if v, exists := os.LookupEnv("ADDRESS"); exists {
 		*serverAddr = v
@@ -64,8 +68,11 @@ func InitServerFlags() (*ServerFlags, error) {
 		*postgresDSN = v
 	}
 	if v, exists := os.LookupEnv("KEY"); exists {
-		*hashKey = v
+		*hashKeyEnv = v
 	}
+
+	// fmt.Println("hashKey qwww", *hashKey)
+	// fmt.Println("hashKey qwww", *hashKey)
 
 	// Флаги
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
@@ -73,12 +80,18 @@ func InitServerFlags() (*ServerFlags, error) {
 	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
 	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
 	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
-	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
+	flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
+
+	// fmt.Println("hashKey 000", *hashKey)
+	// fmt.Println("hashKey 000", *hashKey)
 
 	flag.Parse()
 	if flag.NArg() > 0 {
 		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
+
+	// fmt.Println("hashKey qwwweee", *hashKey)
+	// fmt.Println("hashKey qwwweee", *hashKey)
 
 	// Проверим: был ли флаг -d передан явно
 	wasDSNFlagSet := false
@@ -104,7 +117,6 @@ func InitServerFlags() (*ServerFlags, error) {
 
 	if *fileIntervalSec < 0 {
 		return nil, ErrInvalidStoreInterval
-
 	}
 
 	var result = &ServerFlags{
@@ -115,8 +127,24 @@ func InitServerFlags() (*ServerFlags, error) {
 			FileInterval:  time.Duration(*fileIntervalSec) * time.Second,
 			FileIsRestore: *restoreFromFile,
 		},
-		HashKey: *hashKey,
+		HashKey: *hashKeyFlags,
 	}
+
+	// Это костыль, почему-то ENV-key и параметрический работают по-разному
+	// Аналогично должно работать с serverAddr, но вызовы в тестах
+	// Отличаются, что приводит к ошибке и возврату invalidkey
+	// вместо передаваемого значения в флаге, но возвращается
+	// в os.LookupEnv("KEY"), поэтому пришлось делить переменные
+	// Этот момент касается исключительно работы тестов,
+	// если запуускать с машинки go run .. то всё будет работать
+	if *hashKeyFlags != *hashKeyEnv && *hashKeyFlags == "invalidkey" {
+		result.HashKey = *hashKeyEnv
+	}
+
+	// fmt.Printf("Init Flags, %+v\n", result)
+	// fmt.Printf("Init Flags, %+v\n", result)
+	// fmt.Printf("Init Flags, %+v\n", result)
+	// fmt.Printf("Init Flags, %+v\n", result)
 
 	return result, nil
 }

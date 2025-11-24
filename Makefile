@@ -29,7 +29,9 @@ run_agent:
 	go run cmd/agent/main.go
 
 test_by_bin: build_all
-	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db)
+# 	rm -rf ./messages.log
+# 	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) >> messages.log
+	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
 
 test_local:
 	go test ./...

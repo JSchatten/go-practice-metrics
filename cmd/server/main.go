@@ -32,6 +32,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
+	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
+	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
@@ -50,6 +54,12 @@ func main() {
 
 	gin.DefaultWriter = io.Discard
 	router := gin.New()
+
+	// ВНЕЗАПНО начали отправлять запросы
+	// в 14й итерации на окончание слеша something/
+	// отключаем редирект
+	router.RedirectFixedPath = false
+
 	// middleware
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
 	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
@@ -57,9 +67,9 @@ func main() {
 	// routes
 	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
 	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
-	router.POST("/update", handlers.UpdateHandlerJSON(storageObj))
+	router.POST("/update/", handlers.UpdateHandlerJSON(storageObj))
 	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))
-	router.POST("/value", handlers.ValueHandlerJSON(storageObj))
+	router.POST("/value/", handlers.ValueHandlerJSON(storageObj))
 	router.GET("/ping", handlers.PingDatabaseHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 

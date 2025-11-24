@@ -9,15 +9,60 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// var hashSecretHandler string
+
 func HashCheckMiddleware(hashSecret string) gin.HandlerFunc {
+
+	// hashSecretHandler = hashSecret
+
+	// fmt.Println("HashCheckMiddleware.hashSecret", hashSecret)
+	// fmt.Println("HashCheckMiddleware.hashSecret", hashSecret)
+	// fmt.Println("HashCheckMiddleware.hashSecret", hashSecret)
+
+	// fmt.Println("HashCheckMiddleware.hashSecretHandler", hashSecretHandler)
+	// fmt.Println("HashCheckMiddleware.hashSecretHandler", hashSecretHandler)
+	// fmt.Println("HashCheckMiddleware.hashSecretHandler", hashSecretHandler)
+
 	return func(c *gin.Context) {
 		if hashSecret == "" {
 			c.Next() // Скипаем по условию
 			return
 		}
 
+		// clientHash := r.Header.Get("HashSHA256")
+		// if clientHash == "" {
+		// 	next.ServeHTTP(w, r)
+		// 	return
+		// }
+
+		// bodyBytes, err := io.ReadAll(r.Body)
+		// if err != nil {
+		// 	logger.Log.Errorf("Error reading body: %s", err)
+		// 	next.ServeHTTP(w, r)
+		// 	return
+		// }
+
+		// r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		// s := hmac.New(sha256.New, []byte(h.cfg.Key))
+		// s.Write(bodyBytes)
+		// bodyHash := s.Sum(nil)
+
+		// data, err := hex.DecodeString(clientHash)
+		// if err != nil {
+		// 	logger.Log.Errorf("Error decoding client hash: %s", err)
+		// 	return
+		// }
+
+		// if !hmac.Equal(bodyHash, data) {
+		// 	logger.Log.Errorf("Auth Token Failed")
+		// 	//w.WriteHeader(http.StatusBadRequest)
+		// 	next.ServeHTTP(w, r)
+		// 	return
+		// }
+
 		// clientHash := c.Request.Header.Get("HashSHA256")
-		clientHash := c.Request.Header.Get("Hash")
+		clientHash := c.Request.Header.Get("HashSHA256")
 
 		if clientHash == "" {
 			// fmt.Println("Client hash is empty")
@@ -42,12 +87,16 @@ func HashCheckMiddleware(hashSecret string) gin.HandlerFunc {
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 		if !Verify(body, hashSecret, clientHash) {
 			// c.AbortWithStatus(http.StatusBadRequest)
+			// fmt.Println("HashCheckMiddleware.body", body)
+			// fmt.Println("HashCheckMiddleware.hashSecret", hashSecret)
+			// fmt.Println("HashCheckMiddleware.clientHash", clientHash)
+			// fmt.Println("HashCheckMiddleware.err", err)
+
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid hash",
 				"code":  http.StatusBadRequest,
 				"err":   err,
 			})
-			fmt.Println(err)
 			return
 		}
 
