@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand/v2"
 	"runtime"
@@ -10,6 +11,8 @@ import (
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type flags struct {
@@ -126,6 +129,22 @@ func UpdateRuntimeMetrics(cfg config.AgentFlags, storage *storage.MemStorage, do
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("StackSys", float64(memStats.StackSys))))
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("Sys", float64(memStats.Sys))))
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc))))
+
+			// Новые метрики для памяти
+			v, _ := mem.VirtualMemory()
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("TotalMemory", float64(v.Total))))
+			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("FreeMemory", float64(v.Free))))
+			// Новые метрики для CPU
+
+			cpuUsesage, err := cpu.Percent(time.Duration(0), true)
+			if err != nil {
+				addError(&errorsUpdating, err)
+				log.Printf("Error getting CPU usage: %v", err)
+			} else {
+				for cpuIndx, cpuUse := range cpuUsesage {
+					addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge(fmt.Sprintf("CPUutilization%d", cpuIndx), cpuUse)))
+				}
+			}
 
 			// Дополнительные
 			addError(&errorsUpdating, storage.UpdateMetric(ctx, getMetricGauge("RandomValue", float64(rand.IntN(100)))))

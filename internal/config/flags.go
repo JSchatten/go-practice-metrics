@@ -6,6 +6,7 @@ const (
 	// agent
 	constPollInterval   = 2
 	constReportInterval = 10
+	constRateLimit      = 10
 	// server
 	constFilePath        = "./metrics.json"
 	constFileIntervalSec = 300
