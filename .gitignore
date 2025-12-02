@@ -41,3 +41,4 @@ metrics.json
 
 # logs from stdout
 *.log
+*.txt

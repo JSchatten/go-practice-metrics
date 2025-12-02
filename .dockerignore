@@ -4,3 +4,25 @@ tmp/*
 README.md
 .git
 .db_store
+
+
+# IDEs directories
+.idea
+.vscode
+
+# binary test
+metricstest
+metricstest_v2
+
+# binary output build
+build/
+
+# Air
+tmp/
+
+# debug metrics.json
+metrics.json
+
+# logs from stdout
+*.log
+*.txt

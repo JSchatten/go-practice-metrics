@@ -3,14 +3,12 @@ package main
 import (
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
 	"log"
 
 	agentInternal "github.com/JSchatten/go-practice-metrics/internal/agent"
 	config "github.com/JSchatten/go-practice-metrics/internal/config"
-	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 
 	"github.com/rs/zerolog"
 	logZero "github.com/rs/zerolog/log"
@@ -22,31 +20,47 @@ func main() {
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
 
 	cfg, err := config.InitAgentFlags()
-
 	if err != nil {
-		logZero.Logger.Fatal().Err(err).Msg("Failed start agent agentFlags")
+		logZero.Logger.Fatal().Err(err).Msg("Failed start agent InitAgentFlags")
 	}
 
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
+	agentInst, err := agentInternal.NewAgent(cfg)
 
-	storage, err := storage.NewMemStorage(os.DevNull, 0, false, "")
 	if err != nil {
-		logZero.Logger.Fatal().Err(err).Msg("Failed start agent memStorage")
+		logZero.Logger.Fatal().Err(err).Msg("Failed start agent NewAgent")
 	}
-	done := make(chan struct{})
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// Горутина для обработки сигналов
-	go func() {
-		<-sigChan
-		close(done)
-	}()
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	// Запуск сбора и отправки метрик
-	agentInternal.UpdateRuntimeMetrics(*cfg, storage, done)
-	logZero.Logger.Info().Msg("Agent processed")
+	go func() {
+		agentInst.Start()
+	}()
 
+	<-done
+	agentInst.Stop()
+
+	// Старый код, к удалению
+	// var memStats runtime.MemStats
+	// runtime.ReadMemStats(&memStats)
+
+	// storage, err := storage.NewMemStorage(os.DevNull, 0, false, "")
+	// if err != nil {
+	// 	logZero.Logger.Fatal().Err(err).Msg("Failed start agent memStorage")
+	// }
+	// done := make(chan struct{})
+
+	// sigChan := make(chan os.Signal, 1)
+	// signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// // Горутина для обработки сигналов
+	// go func() {
+	// 	<-sigChan
+	// 	close(done)
+	// }()
+
+	// // Запуск сбора и отправки метрик
+	// agentInternal.UpdateRuntimeMetrics(*cfg, storage, done)
+
+	logZero.Logger.Info().Msg("Agent processed")
 }
