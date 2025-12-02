@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
-	"time"
 
 	"github.com/JSchatten/go-practice-metrics/internal/gzip"
 	hashprocess "github.com/JSchatten/go-practice-metrics/internal/hashprocess"
@@ -14,14 +13,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const batchSize = 20
-
 type workerPool struct {
 	client     *resty.Client
 	serverAddr string
 	hashKey    string
 	limiter    *rate.Limiter
-	metricsCh  <-chan MetricsModel.Metrics
+	batchCh    chan []MetricsModel.Metrics
 	ctx        context.Context
 	wg         sync.WaitGroup
 }
@@ -30,15 +27,16 @@ func newWorkerPool(
 	client *resty.Client,
 	serverAddr, hashKey string,
 	limiter *rate.Limiter,
-	metricsCh <-chan MetricsModel.Metrics,
+	batchCh chan []MetricsModel.Metrics,
 	ctx context.Context,
+
 ) *workerPool {
 	return &workerPool{
 		client:     client,
 		serverAddr: serverAddr,
 		hashKey:    hashKey,
 		limiter:    limiter,
-		metricsCh:  metricsCh,
+		batchCh:    batchCh,
 		ctx:        ctx,
 	}
 }
@@ -51,46 +49,24 @@ func (wp *workerPool) start(numWorkers int) {
 }
 
 func (wp *workerPool) wait() {
+	close(wp.batchCh)
 	wp.wg.Wait()
 }
 
 func (wp *workerPool) worker() {
 	defer wp.wg.Done()
 
-	for {
-		select {
-		case metric, ok := <-wp.metricsCh:
-			if !ok {
-				return // канал закрыт
-			}
-			batch := wp.collectBatch(metric)
-			wp.sendBatch(batch)
-		case <-wp.ctx.Done():
-			return
-		}
+	for batch := range wp.batchCh { // range по batchCh
+		wp.sendBatch(batch)
 	}
+
 }
 
-func (wp *workerPool) collectBatch(first MetricsModel.Metrics) []MetricsModel.Metrics {
-	batch := []MetricsModel.Metrics{first}
-
-	timer := time.NewTimer(100 * time.Millisecond)
-	defer timer.Stop()
-
-	for len(batch) < batchSize {
-		select {
-		case metric, ok := <-wp.metricsCh:
-			if !ok {
-				return batch
-			}
-			batch = append(batch, metric)
-		case <-timer.C:
-			return batch
-		case <-wp.ctx.Done():
-			return batch
-		}
+func (wp *workerPool) SendBatch(batch []MetricsModel.Metrics) {
+	select {
+	case wp.batchCh <- batch:
+	case <-wp.ctx.Done():
 	}
-	return batch
 }
 
 // переписанная отпарвка по сути (что было в httpSendBatchJSON)

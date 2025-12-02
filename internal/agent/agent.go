@@ -17,6 +17,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const cnstBatchSize = 20
+
 type Agent struct {
 	config        *config.AgentFlags
 	storage       *service.MemStorage
@@ -27,8 +29,6 @@ type Agent struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	metricsChan chan MetricsModel.Metrics
-	// workerPool  *WorkerPool
 	rateLimiter *rate.Limiter
 }
 
@@ -39,8 +39,6 @@ func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 	}
 
 	client := resty.New()
-	// client.SetTimeout(10 * time.Second)
-	// client := resty.New() //.SetTimeout(3 * time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Agent{
@@ -52,7 +50,6 @@ func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 		ctx:           ctx,
 		cancel:        cancel,
 
-		metricsChan: make(chan MetricsModel.Metrics, 1000), // буфер
 		rateLimiter: rate.NewLimiter(rate.Limit(cfg.RateLimit), cfg.RateLimit),
 	}, nil
 }
@@ -60,12 +57,14 @@ func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 func (a *Agent) Start() {
 	log.Println("Agent is running...")
 
+	batchCh := make(chan []MetricsModel.Metrics, 100)
+
 	workerPool := newWorkerPool(
 		a.httpClient,
 		a.config.ServerAddr,
 		a.config.HashKey,
 		a.rateLimiter,
-		a.metricsChan,
+		batchCh,
 		a.ctx,
 	)
 	workerPool.start(a.config.RateLimit) // число воркеров = rate limit
@@ -73,11 +72,15 @@ func (a *Agent) Start() {
 	// Откладываем завершение
 	defer workerPool.wait()
 
+	tickerReport := time.NewTicker(a.config.ReportInterval)
+	defer tickerReport.Stop()
+
 	for {
 		select {
 		case <-a.tickerCollect.C:
 			a.collectMetrics(a.ctx)
-
+		case <-tickerReport.C:
+			a.sendAllMetrics(workerPool)
 		case <-a.done:
 			log.Println("Agent stopped.")
 			return
@@ -88,7 +91,6 @@ func (a *Agent) Start() {
 func (a *Agent) Stop() {
 	a.tickerCollect.Stop()
 	close(a.done)
-	close(a.metricsChan)
 }
 
 func (a *Agent) collectMetrics(ctx context.Context) {
@@ -160,62 +162,29 @@ func (a *Agent) collectMetrics(ctx context.Context) {
 	}
 	log.Println("Collecting metrics done")
 
-	// Может, в отдлеьную фкнкцию, хотя это
-	// дублирует addError(...UpdateMetric(...)) , но только для отправки в канал
-	// хранение в storage остаётся для локального доступа
-	sendToChannel := func(m *MetricsModel.Metrics) {
-		select {
-		case a.metricsChan <- *m:
-		case <-a.ctx.Done():
-			return
+}
+
+func (a *Agent) sendAllMetrics(wp *workerPool) {
+	ctx := context.Background()
+
+	// Получаем все метрики из storage
+	metrics := a.storage.GetAllMetrics(ctx)
+	if len(metrics) == 0 {
+		log.Println("No metrics to send")
+		return
+	}
+
+	log.Printf("Sending %d metrics", len(metrics))
+
+	// Делим на батчи и отправляем
+	for i := 0; i < len(metrics); i += cnstBatchSize {
+		end := i + cnstBatchSize
+		if end > len(metrics) {
+			end = len(metrics)
 		}
+		batch := metrics[i:end]
+
+		// Асинхронная отправка
+		wp.SendBatch(batch)
 	}
-
-	sendToChannel(getMetricGauge("Alloc", float64(memStats.Alloc)))
-	sendToChannel(getMetricGauge("BuckHashSys", float64(memStats.BuckHashSys)))
-	sendToChannel(getMetricGauge("Frees", float64(memStats.Frees)))
-	sendToChannel(getMetricGauge("GCCPUFraction", memStats.GCCPUFraction))
-	sendToChannel(getMetricGauge("GCSys", float64(memStats.GCSys)))
-	sendToChannel(getMetricGauge("HeapAlloc", float64(memStats.HeapAlloc)))
-	sendToChannel(getMetricGauge("HeapIdle", float64(memStats.HeapIdle)))
-	sendToChannel(getMetricGauge("HeapInuse", float64(memStats.HeapInuse)))
-	sendToChannel(getMetricGauge("HeapObjects", float64(memStats.HeapObjects)))
-	sendToChannel(getMetricGauge("HeapReleased", float64(memStats.HeapReleased)))
-	sendToChannel(getMetricGauge("HeapSys", float64(memStats.HeapSys)))
-	sendToChannel(getMetricGauge("LastGC", float64(memStats.LastGC)/1e9))
-	sendToChannel(getMetricGauge("Lookups", float64(memStats.Lookups)))
-	sendToChannel(getMetricGauge("MCacheInuse", float64(memStats.MCacheInuse)))
-	sendToChannel(getMetricGauge("MCacheSys", float64(memStats.MCacheSys)))
-	sendToChannel(getMetricGauge("MSpanInuse", float64(memStats.MSpanInuse)))
-	sendToChannel(getMetricGauge("MSpanSys", float64(memStats.MSpanSys)))
-	sendToChannel(getMetricGauge("Mallocs", float64(memStats.Mallocs)))
-	sendToChannel(getMetricGauge("NextGC", float64(memStats.NextGC)))
-	sendToChannel(getMetricGauge("NumForcedGC", float64(memStats.NumForcedGC)))
-	sendToChannel(getMetricGauge("NumGC", float64(memStats.NumGC)))
-	sendToChannel(getMetricGauge("OtherSys", float64(memStats.OtherSys)))
-	sendToChannel(getMetricGauge("PauseTotalNs", float64(memStats.PauseTotalNs)/1e9))
-	sendToChannel(getMetricGauge("StackInuse", float64(memStats.StackInuse)))
-	sendToChannel(getMetricGauge("StackSys", float64(memStats.StackSys)))
-	sendToChannel(getMetricGauge("Sys", float64(memStats.Sys)))
-	sendToChannel(getMetricGauge("TotalAlloc", float64(memStats.TotalAlloc)))
-
-	if v, err := mem.VirtualMemory(); err == nil {
-		sendToChannel(getMetricGauge("TotalMemory", float64(v.Total)))
-		sendToChannel(getMetricGauge("FreeMemory", float64(v.Free)))
-	}
-
-	if cpuUsesage, err := cpu.Percent(time.Duration(0), true); err == nil {
-		for cpuIndx, cpuUse := range cpuUsesage {
-			sendToChannel(getMetricGauge(fmt.Sprintf("CPUutilization%d", cpuIndx), cpuUse))
-		}
-	}
-
-	sendToChannel(getMetricGauge("RandomValue", float64(rand.IntN(100))))
-
-	if pollCnt == nil {
-		sendToChannel(getMetricCount("PollCount", 1))
-	} else {
-		sendToChannel(getMetricCount("PollCount", *pollCnt.Delta+1))
-	}
-
 }
