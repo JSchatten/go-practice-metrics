@@ -165,10 +165,8 @@ func (a *Agent) collectMetrics(ctx context.Context) {
 }
 
 func (a *Agent) sendAllMetrics(wp *workerPool) {
-	ctx := context.Background()
-
 	// Получаем все метрики из storage
-	metrics := a.storage.GetAllMetrics(ctx)
+	metrics := a.storage.GetAllMetrics(a.ctx)
 	if len(metrics) == 0 {
 		log.Println("No metrics to send")
 		return
