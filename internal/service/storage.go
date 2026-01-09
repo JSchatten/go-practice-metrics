@@ -219,3 +219,14 @@ func (s *MemStorage) updateMetricInMemory(metricIn *model.Metrics) error {
 		return NewErrUnknownMetricType(string(metricIn.MType))
 	}
 }
+
+func (s *MemStorage) GetAllMetrics(ctx context.Context) []model.Metrics {
+	s.mxDataAccess.RLock()
+	defer s.mxDataAccess.RUnlock()
+
+	var metrics []model.Metrics
+	for _, m := range s.Metrics {
+		metrics = append(metrics, *m)
+	}
+	return metrics
+}
