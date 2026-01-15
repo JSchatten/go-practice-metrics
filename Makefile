@@ -31,7 +31,8 @@ run_agent:
 test_by_bin: build_all
 # 	rm -rf ./messages.log
 # 	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) >> messages.log
-	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
+# 	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
+	./metricstest_v2  -test.v -test.run=^TestIteration16 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
 
 test_local:
 	go test ./...
@@ -43,3 +44,4 @@ test_coverage:
 	go test ./... -coverprofile=c.out
 	go tool cover -func=c.out
 	go tool cover -html=c.out -o=./coverage.html
+# 	go test ./... -coverprofile=c.out -race

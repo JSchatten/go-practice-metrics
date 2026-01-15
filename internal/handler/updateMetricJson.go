@@ -55,6 +55,8 @@ func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
 			FailedToUpdateMetric(c, err)
 			return
 		}
+		// Добавляем метрики в контекст для аудита
+		c.Set("audit.metrics", []string{metricIn.ID})
 
 		c.JSON(http.StatusOK, metricIn)
 		logZero.Logger.Info().Msgf("UpdateHandlerJSON metrics in = %s", metricIn.String())
@@ -76,6 +78,7 @@ func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
+		var metricNames []string
 		// Валидация через метод
 		for _, elem := range metricsIn {
 			if err := elem.Validate(); err != nil {
@@ -95,7 +98,11 @@ func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 				// Прерываем, если в батче есть невалидные данные
 				return
 			}
+			// Тут метрики добавляются, но вызов Set позже,
+			// чтобы прервать в случа некорректного запроса
+			metricNames = append(metricNames, elem.ID)
 		}
+		c.Set("audit.metrics", metricNames)
 
 		err := storage.UpdateMetricBatch(c, &metricsIn)
 		if err != nil {
