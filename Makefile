@@ -1,47 +1,97 @@
-build_server_out_folder = ./build/server_out
-build_agent_out_folder = ./build/agent_out
+# Directories
+BUILD_DIR := ./build
+COVERAGE_DIR := ./go_test
 
-bs_out = $(build_server_out_folder)/server
-ba_out = $(build_agent_out_folder)/agent
+# Binary output paths
+BS_OUT := $(BUILD_DIR)/server_out/server
+BA_OUT := $(BUILD_DIR)/agent_out/agent
 
-dsn_db = postgres://postgres:admin54321@localhost:5678/postgres
+# Source files
+SRC_SERVER := ./cmd/server/main.go
+SRC_AGENT := ./cmd/agent/main.go
 
-src_server = ./cmd/server/main.go
-src_agent = ./cmd/agent/main.go
+# Database DSN
+DSN_DB := postgres://postgres:admin54321localhost:5678/postgres
 
-build_server:
-	rm -rf $(build_server_out_folder)
-	mkdir -p $(build_server_out_folder)
-	go build -o $(bs_out) $(src_server)
+# Coverage files
+COVERAGE_OUT := $(COVERAGE_DIR)/coverage.out
+COVERAGE_HTML := $(COVERAGE_DIR)/coverage.html
 
-build_agent:
-	rm -rf $(build_agent_out_folder)
-	mkdir -p $(build_agent_out_folder)
-	go build -o $(ba_out) $(src_agent)
 
+# Recreate build directory
+.PHONY: recreate_build_dir
+recreate_build_dir:
+	echo "Cleaning build directory..."
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/server_out
+	mkdir -p $(BUILD_DIR)/agent_out
+	echo "Build directory prepared"
+
+# Recreate coverage directory
+.PHONY: recreate_coverage_dir
+recreate_coverage_dir:
+	echo "Cleaning coverage directory..."
+	rm -rf $(COVERAGE_DIR)
+	mkdir -p $(COVERAGE_DIR)
+	echo "Coverage directory prepared"
+
+
+# Build server
+build_server: recreate_build_dir
+	echo "Building server..."
+	go build -o $(BS_OUT) $(SRC_SERVER)
+	echo "Server built: $(BS_OUT)"
+
+# Build agent
+build_agent: recreate_build_dir
+	echo "Building agent..."
+	go build -o $(BA_OUT) $(SRC_AGENT)
+	echo "Agent built: $(BA_OUT)"
+
+# Build both
 build_all: build_agent build_server
-	@echo "Builded agent and server"
+	echo "Build complete: server and agent"
 
+# Run server
 run_server:
-	go run cmd/server/main.go
+	go run $(SRC_SERVER)
 
+# Run agent
 run_agent:
-	go run cmd/agent/main.go
+	go run $(SRC_AGENT)
 
+# Run binary tests
 test_by_bin: build_all
-# 	rm -rf ./messages.log
-# 	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) >> messages.log
-# 	./metricstest_v2  -test.v -test.run=^TestIteration14 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
-	./metricstest_v2  -test.v -test.run=^TestIteration16 -source-path=. -agent-binary-path=$(ba_out) -binary-path=$(bs_out) -server-port=5555 -key=tmp -database-dsn=$(dsn_db) 
+	./metricstest_v2 \
+		-test.v \
+		-test.run=^TestIteration16 \
+		-source-path=. \
+		-agent-binary-path=$(BA_OUT) \
+		-binary-path=$(BS_OUT) \
+		-server-port=5555 \
+		-key=tmp \
+		-database-dsn=$(DSN_DB)
 
+# Run local tests
 test_local:
 	go test ./...
 
+# Full build and test
 build_test_local_all: build_all test_local
-	@echo "Full run build and test for server finished"
+	echo "Build and local tests completed"
 
-test_coverage:
-	go test ./... -coverprofile=c.out
-	go tool cover -func=c.out
-	go tool cover -html=c.out -o=./coverage.html
-# 	go test ./... -coverprofile=c.out -race
+# Test coverage
+test_coverage: recreate_coverage_dir
+	echo "Running tests with coverage..."
+	go test ./... -coverprofile=$(COVERAGE_OUT) -covermode=atomic
+	echo "Generating coverage report..."
+	go tool cover -func=$(COVERAGE_OUT)
+	go tool cover -html=$(COVERAGE_OUT) -o=$(COVERAGE_HTML)
+	echo "Coverage report generated: $(COVERAGE_HTML)"
+
+# Clean all artifacts
+.PHONY: clean
+clean:
+	rm -rf $(BUILD_DIR)
+	rm -rf $(COVERAGE_DIR)
+	echo "Clean completed: removed $(BUILD_DIR) and $(COVERAGE_DIR)"
