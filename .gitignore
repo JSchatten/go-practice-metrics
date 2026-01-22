@@ -44,4 +44,7 @@ metrics.json
 *.txt
 
 # generated files
+# Tests
 go_test/
+# Docs
+docs/

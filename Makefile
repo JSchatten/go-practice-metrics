@@ -64,7 +64,7 @@ run_agent:
 test_by_bin: build_all
 	./metricstest_v2 \
 		-test.v \
-		-test.run=^TestIteration16 \
+		-test.run=^TestIteration19 \
 		-source-path=. \
 		-agent-binary-path=$(BA_OUT) \
 		-binary-path=$(BS_OUT) \
@@ -90,8 +90,19 @@ test_coverage: recreate_coverage_dir
 	echo "Coverage report generated: $(COVERAGE_HTML)"
 
 # Clean all artifacts
-.PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(COVERAGE_DIR)
 	echo "Clean completed: removed $(BUILD_DIR) and $(COVERAGE_DIR)"
+
+go_md_doc:
+	mkdir -p docs
+#	Need gon install github.com/robertkrimen/godocdown/godocdown@latest
+	godocdown ./internal/model > docs/models.md
+
+go_doc:
+	go test -v ./internal/model -run Example
+	go doc -all model.Metrics
+
+go_doc_full: go_md_doc go_doc
+# 	echo "===\nDocs shown and generated"
