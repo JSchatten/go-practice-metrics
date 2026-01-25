@@ -80,11 +80,9 @@ func main() {
 	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
 	router.Use(gzipMiddleaware.GzipMiddleware())
 	// routes
-	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
-	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
-	router.POST("/update/", handlers.UpdateHandlerJSON(storageObj))
+	router.POST("/update/", handlers.UpdateHandler(storageObj))
 	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))
-	router.POST("/value/", handlers.ValueHandlerJSON(storageObj))
+	router.POST("/value/", handlers.ValueHandler(storageObj))
 	router.GET("/ping", handlers.PingDatabaseHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 

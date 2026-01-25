@@ -10,7 +10,7 @@ import (
 	logZero "github.com/rs/zerolog/log"
 )
 
-func UpdateHandlerJSON(storage storage.Storage) gin.HandlerFunc {
+func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logZero.Logger.Info().Msg("UpdateHandlerJSON")
 		var metricIn model.Metrics

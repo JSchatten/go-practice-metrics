@@ -1,3 +1,6 @@
+// Package models предоставляет основные структуры данных для работы с метриками.
+// Включает в себя модель метрики, валидацию, конструкторы и обработку ошибок.
+
 package models
 
 import (
@@ -7,8 +10,10 @@ import (
 )
 
 const (
+	// Counter обозначает тип метрики накопителя/инкремента (нарастающее целочисленное значение).
 	Counter = "counter"
-	Gauge   = "gauge"
+	// Gauge обозначает тип метрики "измерителя" (устанавливаемое вещественное значение любого знака).
+	Gauge = "gauge"
 )
 
 // NOTE: Не усложняем пример, вводя иерархическую вложенность структур.
@@ -16,17 +21,30 @@ const (
 // Delta и Value объявлены через указатели,
 // что бы отличать значение "0", от не заданного значения
 // и соответственно не кодировать в структуру.
+
+// Metrics описывает сущность метрики
 type Metrics struct {
-	ID    string   `json:"id"`
-	MType string   `json:"type"`
-	Delta *int64   `json:"delta,omitempty"`
+	// ID - уникальный идентификатор метрики (имя метрики).
+	ID string `json:"id"`
+	// MType - тип метрики: "counter" или "gauge".
+	MType string `json:"type"`
+	// Delta - значение счётчика (целое число). Должно быть указано только для типа "counter".
+	Delta *int64 `json:"delta,omitempty"`
+	// Value - значение измерителя (вещественное число). Должно быть указано только для типа "gauge".
 	Value *float64 `json:"value,omitempty"`
-	Hash  string   `json:"hash,omitempty"`
+	// Hash - опциональная подпись метрики (например, HMAC).
+	// Используется для проверки целостности данных.
+	Hash string `json:"hash,omitempty"`
 }
 
 // Добавленный код для Metrics
 
 // Validate checks if the Metrics instance is valid.
+// String возвращает строковое представление метрики в формате JSON.
+// Если метрика равна nil, возвращается "<nil>".
+// В случае ошибки маршалинга возвращается описание ошибки.
+//
+// Реализует интерфейс fmt.Stringer.
 func (m *Metrics) String() string {
 	if m == nil {
 		return "<nil>"
@@ -38,7 +56,20 @@ func (m *Metrics) String() string {
 	return string(s)
 }
 
-// NewMetrics creates and validates a Metrics instance from raw values.
+// NewMetrics создаёт новую метрику на основе имени, типа и строкового значения.
+// Проверяет корректность входных данных и возвращает ошибку при нарушении условий.
+//
+// Поведение:
+//   - Для типа "counter" значение парсится как int64.
+//   - Для типа "gauge" значение парсится как float64.
+//   - Пустое имя метрики или тип вызывают ошибку.
+//
+// Примеры:
+//
+//	metric, err := NewMetrics("requests", "counter", "100")
+//	metric, err := NewMetrics("cpu", "gauge", "0.85")
+//
+// Возвращает указатель на Metrics и nil в случае успеха, иначе - nil и ошибку.
 func NewMetrics(id, mType, valueStr string) (*Metrics, error) {
 	if id == "" {
 		return nil, ErrEmptyMetricID
@@ -79,7 +110,21 @@ func NewMetrics(id, mType, valueStr string) (*Metrics, error) {
 	return &metric, nil
 }
 
-// Validate checks if the Metrics instance is valid.
+// Validate проверяет, что метрика корректна с точки зрения логики и заполненности полей.
+// Возвращает nil, если метрика валидна, и ошибку в противном случае.
+//
+// Проверки:
+//   - Метрика не должна быть nil.
+//   - ID и MType не должны быть пустыми.
+//   - Для типа "counter" должно быть задано поле Delta.
+//   - Для типа "gauge" должно быть задано поле Value.
+//   - Тип метрики должен быть одним из допустимых: "counter" или "gauge".
+//
+// Пример использования:
+//
+//	if err := metric.Validate(); err != nil {
+//	    log.Printf("Invalid metric: %v", err)
+//	}
 func (m *Metrics) Validate() error {
 	if m == nil {
 		return ErrNilMetric
