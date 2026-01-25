@@ -98,11 +98,13 @@ clean:
 go_md_doc:
 	mkdir -p docs
 #	Need gon install github.com/robertkrimen/godocdown/godocdown@latest
-	godocdown ./internal/model > docs/models.md
+	godocdown ./internal/model > docs/model.md
+	godocdown ./internal/handler > docs/handler.md
 
 go_doc:
 	go test -v ./internal/model -run Example
 	go doc -all model.Metrics
+	go doc -all handler.ValueHandler
 
 go_doc_full: go_md_doc go_doc
 # 	echo "===\nDocs shown and generated"

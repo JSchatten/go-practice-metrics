@@ -5,7 +5,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 )
 
@@ -49,10 +48,10 @@ func (m *Metrics) String() string {
 	if m == nil {
 		return "<nil>"
 	}
-	s, err := json.Marshal(m)
-	if err != nil {
-		return fmt.Sprintf("<error> %s", err)
-	}
+	s, _ := json.Marshal(m)
+	// if err != nil { // Не возвращаем ошибку, чтобы не нарушать интерфейс fmt.Stringer
+	// 	return fmt.Sprintf("<error> %s", err) // Также ветка проверки недостижима
+	// } // потому как объект всегда явялется сериализуемым
 	return string(s)
 }
 

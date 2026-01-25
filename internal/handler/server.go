@@ -1,3 +1,4 @@
+// server.go - сервер для обработки запросов, предоставление API
 package handler
 
 import (
@@ -15,13 +16,40 @@ const (
 	htmlBottom = "</table></body></html>"
 )
 
-// Для проверки
+// LiveHandler возвращает статус "It's alive!" для проверки доступности сервера.
+//
+// Метод: любой (но всегда возвращает 405 - Method Not Allowed)
+// Путь: /live
+//
+// Примечание: эндпоинт **намеренно возвращает 405**, чтобы продемонстрировать обработку ошибок.
+// В реальном приложении следует использовать 200 OK.
+//
+// BUG(@JSchatten): Тестовый баг для проверки работы генерации godoc:
+// Допустим неверное использование ручки, что может привести к некорректной работе.
 func LiveHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, gin.H{"status": "It's alive!"})
 	}
 }
 
+// PingDatabaseHandler проверяет соединение с базой данных.
+//
+// Метод: GET
+// Путь: /ping
+//
+// В случае успеха:
+//   - Код 200 OK
+//   - Ответ: {"status": "ok"}
+//
+// В случае ошибки:
+//   - Код 500 Internal Server Error
+//   - Ответ: {"error": "cannot connect to database"}
+//
+// Логирование:
+//   - Ошибки подключения логируются как Error.
+//
+// Зависимости:
+//   - storage.Storage - должен реализовывать метод PingDatabase
 func PingDatabaseHandler(storage storageService.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := storage.PingDatabase(c); err != nil {
@@ -33,7 +61,20 @@ func PingDatabaseHandler(storage storageService.Storage) gin.HandlerFunc {
 	}
 }
 
-// Обработчик для корневого пути /
+// RootHandler возвращает HTML-страницу со списком всех метрик.
+//
+// Метод: GET
+// Путь: /
+//
+// Генерирует простую HTML-таблицу со всеми сохранёнными метриками.
+//
+// Формат:
+//   - Показывает ID, тип и значение (или "N/A", если значение nil)
+//   - Counter: отображается как целое число
+//   - Gauge: отображается с двумя знаками после запятой
+//
+// Ошибки:
+//   - 405 Method Not Allowed, если метод не GET
 func RootHandler(storage storageService.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet {
