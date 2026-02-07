@@ -1,3 +1,10 @@
+// Package main - точка входа агента сбора метрик.
+//
+// Агент:
+//   - Регулярно собирает системные метрики (память, CPU и др.)
+//   - Отправляет их на сервер по HTTP
+//   - Поддерживает пакетную отправку и Gzip-сжатие
+//   - Проверяет и добавляет хеши (если задан ключ)
 package main
 
 import (
@@ -39,28 +46,6 @@ func main() {
 
 	<-done
 	agentInst.Stop()
-
-	// Старый код, к удалению
-	// var memStats runtime.MemStats
-	// runtime.ReadMemStats(&memStats)
-
-	// storage, err := storage.NewMemStorage(os.DevNull, 0, false, "")
-	// if err != nil {
-	// 	logZero.Logger.Fatal().Err(err).Msg("Failed start agent memStorage")
-	// }
-	// done := make(chan struct{})
-
-	// sigChan := make(chan os.Signal, 1)
-	// signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// // Горутина для обработки сигналов
-	// go func() {
-	// 	<-sigChan
-	// 	close(done)
-	// }()
-
-	// // Запуск сбора и отправки метрик
-	// agentInternal.UpdateRuntimeMetrics(*cfg, storage, done)
 
 	logZero.Logger.Info().Msg("Agent processed")
 }

@@ -1,3 +1,18 @@
+// Package main - точка входа сервера сбора метрик.
+//
+// Запускает HTTP-сервер, обрабатывающий:
+//   - Приём метрик (POST /update, /updates)
+//   - Получение значений (POST /value, GET /value/...)
+//   - Проверку состояния (GET /ping, /)
+//
+// Поддерживает:
+//   - Хранение в памяти или PostgreSQL
+//   - Автосохранение на диск
+//   - Восстановление из файла
+//   - Аудит изменений (в файл или по HTTP)
+//   - Проверку хешей
+//   - Gzip-сжатие
+//   - Логирование запросов
 package main
 
 import (
@@ -18,6 +33,9 @@ import (
 	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+
+	audit "github.com/JSchatten/go-practice-metrics/internal/audit"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	logZero "github.com/rs/zerolog/log"
@@ -31,10 +49,6 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
-	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
-	// fmt.Println("main cfg.HashKey 000", cfg.HashKey)
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logZero.Logger = logZero.Output(zerolog.ConsoleWriter{Out: log.Writer()})
@@ -60,16 +74,30 @@ func main() {
 	// отключаем редирект
 	router.RedirectFixedPath = false
 
+	// Проверим, включён ли аудит
+	var auditManager *audit.AuditManager
+	if cfg.ServerAuditFlags.AuditFilePath != "" || cfg.ServerAuditFlags.AuditURL != "" {
+		auditManager = audit.NewAuditManager(logZero.Logger)
+		if cfg.ServerAuditFlags.AuditFilePath != "" {
+			auditManager.Register(audit.NewFileAuditObserver(cfg.ServerAuditFlags.AuditFilePath))
+		}
+		if cfg.ServerAuditFlags.AuditURL != "" {
+			auditManager.Register(audit.NewHTTPAuditObserver(cfg.ServerAuditFlags.AuditURL))
+		}
+		// Подключаем middleware
+		router.Use(audit.AuditMiddleware(auditManager))
+	} else {
+		logZero.Info().Msg("Audit is disabled: no AUDIT_FILE or AUDIT_URL provided")
+	}
+
 	// middleware
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
 	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
 	router.Use(gzipMiddleaware.GzipMiddleware())
 	// routes
-	router.POST("/update/:type/:name/:value", handlers.UpdateHandler(storageObj))
-	router.GET("/value/:type/:name", handlers.ValueHandler(storageObj))
-	router.POST("/update/", handlers.UpdateHandlerJSON(storageObj))
+	router.POST("/update/", handlers.UpdateHandler(storageObj))
 	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))
-	router.POST("/value/", handlers.ValueHandlerJSON(storageObj))
+	router.POST("/value/", handlers.ValueHandler(storageObj))
 	router.GET("/ping", handlers.PingDatabaseHandler(storageObj))
 	router.GET("/", handlers.RootHandler(storageObj))
 

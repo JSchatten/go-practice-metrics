@@ -10,16 +10,22 @@ import (
 )
 
 type ServerFlags struct {
-	ServerAddr      string
-	ServerFileFlags ServerFileFlags
-	PostgresDSN     string
-	HashKey         string
+	ServerAddr       string
+	ServerFileFlags  ServerFileFlags
+	ServerAuditFlags ServerAuditFlags
+	PostgresDSN      string
+	HashKey          string
 }
 
 type ServerFileFlags struct {
 	FilePath      string
 	FileInterval  time.Duration
 	FileIsRestore bool
+}
+
+type ServerAuditFlags struct {
+	AuditFilePath string
+	AuditURL      string
 }
 
 func InitServerFlags() (*ServerFlags, error) {
@@ -31,6 +37,9 @@ func InitServerFlags() (*ServerFlags, error) {
 		postgresDSN     = new(string)
 		hashKeyEnv      = new(string)
 		hashKeyFlags    = new(string)
+		// audit
+		auditFilePath = new(string)
+		auditURL      = new(string)
 	)
 
 	*serverAddr = constServerAddr
@@ -71,8 +80,13 @@ func InitServerFlags() (*ServerFlags, error) {
 		*hashKeyEnv = v
 	}
 
-	// fmt.Println("hashKey qwww", *hashKey)
-	// fmt.Println("hashKey qwww", *hashKey)
+	// audit
+	if v, exists := os.LookupEnv("AUDIT_FILE"); exists {
+		*auditFilePath = v
+	}
+	if v, exists := os.LookupEnv("AUDIT_URL"); exists {
+		*auditURL = v
+	}
 
 	// Флаги
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
@@ -81,17 +95,14 @@ func InitServerFlags() (*ServerFlags, error) {
 	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
 	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
 	flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
-
-	// fmt.Println("hashKey 000", *hashKey)
-	// fmt.Println("hashKey 000", *hashKey)
+	//	audit
+	flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
+	flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
 		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
 	}
-
-	// fmt.Println("hashKey qwwweee", *hashKey)
-	// fmt.Println("hashKey qwwweee", *hashKey)
 
 	// Проверим: был ли флаг -d передан явно
 	wasDSNFlagSet := false
@@ -128,6 +139,10 @@ func InitServerFlags() (*ServerFlags, error) {
 			FileIsRestore: *restoreFromFile,
 		},
 		HashKey: *hashKeyFlags,
+		ServerAuditFlags: ServerAuditFlags{
+			AuditFilePath: *auditFilePath,
+			AuditURL:      *auditURL,
+		},
 	}
 
 	// Это костыль, почему-то ENV-key и параметрический работают по-разному
@@ -140,11 +155,6 @@ func InitServerFlags() (*ServerFlags, error) {
 	if *hashKeyFlags != *hashKeyEnv && *hashKeyFlags == "invalidkey" {
 		result.HashKey = *hashKeyEnv
 	}
-
-	// fmt.Printf("Init Flags, %+v\n", result)
-	// fmt.Printf("Init Flags, %+v\n", result)
-	// fmt.Printf("Init Flags, %+v\n", result)
-	// fmt.Printf("Init Flags, %+v\n", result)
 
 	return result, nil
 }

@@ -42,3 +42,9 @@ metrics.json
 # logs from stdout
 *.log
 *.txt
+
+# generated files
+# Tests
+go_test/
+# Docs
+docs/
