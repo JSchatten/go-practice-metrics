@@ -9,14 +9,16 @@ import (
 	"time"
 )
 
+// generate:reset
 type ServerFlags struct {
-	ServerAddr       string            // ServerAddr — адрес сервера для прослушивания входящих запросов.
-	PostgresDSN      string            // PostgresDSN — DSN-строка для подключения к PostgreSQL.
-	HashKey          string            // HashKey — ключ для SHA256-хеширования тела запроса.
-	ServerAuditFlags ServerAuditFlags  // ServerAuditFlags — параметры аудита.
-	ServerFileFlags  ServerFileFlags   // ServerFileFlags — параметры хранения метрик в файле.
+	ServerAddr       string           // ServerAddr — адрес сервера для прослушивания входящих запросов.
+	PostgresDSN      string           // PostgresDSN — DSN-строка для подключения к PostgreSQL.
+	HashKey          string           // HashKey — ключ для SHA256-хеширования тела запроса.
+	ServerAuditFlags ServerAuditFlags // ServerAuditFlags — параметры аудита.
+	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
 }
 
+// generate:reset
 // ServerFileFlags — параметры хранения метрик в файле.
 type ServerFileFlags struct {
 	FilePath      string        // FilePath — путь к файлу для хранения метрик.
@@ -24,6 +26,7 @@ type ServerFileFlags struct {
 	FileIsRestore bool          // FileIsRestore — флаг восстановления метрик из файла при старте.
 }
 
+// generate:reset
 // ServerAuditFlags — параметры аудита.
 type ServerAuditFlags struct {
 	AuditFilePath string // AuditFilePath — путь к файлу аудита.

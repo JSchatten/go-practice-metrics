@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// generate:reset
 type AgentFlags struct {
 	ServerAddr     string        // ServerAddr — адрес сервера для отправки метрик.
 	HashKey        string        // HashKey — ключ для SHA256-хеширования тела запроса.
