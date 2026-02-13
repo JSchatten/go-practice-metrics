@@ -10,22 +10,24 @@ import (
 )
 
 type ServerFlags struct {
-	ServerAddr       string
-	ServerFileFlags  ServerFileFlags
-	ServerAuditFlags ServerAuditFlags
-	PostgresDSN      string
-	HashKey          string
+	ServerAddr       string            // ServerAddr — адрес сервера для прослушивания входящих запросов.
+	PostgresDSN      string            // PostgresDSN — DSN-строка для подключения к PostgreSQL.
+	HashKey          string            // HashKey — ключ для SHA256-хеширования тела запроса.
+	ServerAuditFlags ServerAuditFlags  // ServerAuditFlags — параметры аудита.
+	ServerFileFlags  ServerFileFlags   // ServerFileFlags — параметры хранения метрик в файле.
 }
 
+// ServerFileFlags — параметры хранения метрик в файле.
 type ServerFileFlags struct {
-	FilePath      string
-	FileInterval  time.Duration
-	FileIsRestore bool
+	FilePath      string        // FilePath — путь к файлу для хранения метрик.
+	FileInterval  time.Duration // FileInterval — интервал сохранения метрик в файл (в секундах).
+	FileIsRestore bool          // FileIsRestore — флаг восстановления метрик из файла при старте.
 }
 
+// ServerAuditFlags — параметры аудита.
 type ServerAuditFlags struct {
-	AuditFilePath string
-	AuditURL      string
+	AuditFilePath string // AuditFilePath — путь к файлу аудита.
+	AuditURL      string // AuditURL — URL для отправки событий аудита.
 }
 
 func InitServerFlags() (*ServerFlags, error) {

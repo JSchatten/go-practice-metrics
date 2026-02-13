@@ -31,7 +31,7 @@ var (
 	ErrMetricSaveMemory = errors.New("failed to save metric to memory")
 )
 
-// Форматированные ошибки
+// NewErrUnknownMetricType Форматированные ошибки
 func NewErrUnknownMetricType(mtype string) error {
 	return fmt.Errorf("%w: %s", ErrUnknownMetricType, mtype)
 }

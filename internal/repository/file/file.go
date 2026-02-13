@@ -1,3 +1,11 @@
+// Package repository
+// предоставляет реализацию репозитория для хранения метрик в файле.
+//
+// Основные функции:
+//   - Сохранение и загрузку байтовых данных в/из файла.
+//   - Потокобезопасный доступ к файлу через мьютекс.
+//   - Обработку пустого пути (отключение сохранения).
+//   - Возвращение специализированных ошибок (ErrReadFile, ErrWriteFile).
 package repository
 
 import (
@@ -30,7 +38,7 @@ func (r *FileRepository) SaveMetrics(data []byte) error {
 	}
 
 	if len(data) == 0 {
-		return ErrNoData
+		return ErrFileNoData
 	}
 
 	r.mxFileAccess.Lock()

@@ -48,3 +48,6 @@ metrics.json
 go_test/
 # Docs
 docs/
+
+# staticcheck
+staticlint

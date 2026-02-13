@@ -108,3 +108,8 @@ go_doc:
 
 go_doc_full: go_md_doc go_doc
 # 	echo "===\nDocs shown and generated"
+
+# 	./staticlint ./cmd/... ./internal/... ./pkg/...
+go_staticlint:
+	go build -o staticlint cmd/staticlint/main.go
+	go vet -vettool=./staticlint ./cmd/... ./internal/... ./pkg/...

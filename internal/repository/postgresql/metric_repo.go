@@ -25,8 +25,8 @@ import (
 
 type MetricRepo struct {
 	db       *pgxpool.Pool
-	dsn      string
 	pgConfig *pgxpool.Config
+	dsn      string
 }
 
 func NewMetricRepo(dsn string) (*MetricRepo, error) {
@@ -62,7 +62,8 @@ func (r *MetricRepo) Migrate(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	if err := db.Ping(); err != nil {
+	err = db.Ping()
+	if err != nil {
 		log.Logger.Error().Err(err).Msg("Failed to ping database")
 		return err
 	}
@@ -131,7 +132,7 @@ func (r *MetricRepo) UpdateMetric(ctx context.Context, m *models.Metrics) error 
 	return err
 }
 
-// тут только проверка, деление на группы метрик дальше
+// UpdateMetricBatch тут только проверка, деление на группы метрик дальше
 func (r *MetricRepo) UpdateMetricBatch(ctx context.Context, metrics []models.Metrics) error {
 	if len(metrics) == 0 {
 		return nil

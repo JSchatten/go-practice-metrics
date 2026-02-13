@@ -20,9 +20,9 @@ import (
 //   - Code: машинно-читаемый код ошибки (например, "bad_request")
 //   - Message: человеко-читаемое описание ошибки
 type AppError struct {
-	StatusCode int    `json:"status_code"`
 	Code       string `json:"code"`
 	Message    string `json:"message"`
+	StatusCode int    `json:"status_code"`
 }
 
 // Error реализует интерфейс error, возвращая текст сообщения.
@@ -43,21 +43,21 @@ func (e AppError) Error() string {
 //
 //	abortWithError(c, Errors["MetricNotFound"])
 var Errors = map[string]AppError{
-	"BadRequest":            {http.StatusBadRequest, "bad_request", "Bad request"},
-	"MethodNotAllowed":      {http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed"},
-	"MissingParameters":     {http.StatusNotFound, "missing_parameters", "Missing required parameters"},
-	"InvalidValueFormat":    {http.StatusBadRequest, "invalid_value_format", "Invalid value format"},
-	"UnknownMetricType":     {http.StatusBadRequest, "unknown_metric_type", "Unknown metric type"},
-	"MetricNotFound":        {http.StatusNotFound, "metric_not_found", "Metric not found"},
-	"ValueNotProvided":      {http.StatusBadRequest, "value_not_provided", "Value is missing for gauge"},
-	"DeltaNotProvided":      {http.StatusBadRequest, "delta_not_provided", "Delta is missing for counter"},
-	"FailedToUpdateMetric":  {http.StatusBadRequest, "update_failed", "Failed to update metric"},
-	"InvalidJSON":           {http.StatusBadRequest, "invalid_json", "Invalid JSON"},
-	"MissingRequiredFields": {http.StatusBadRequest, "missing_fields", "Missing required fields: id or type"},
-	"InvalidMetricType":     {http.StatusBadRequest, "invalid_metric_type", "Invalid metric type: must be 'gauge' or 'counter'"},
-	"MetricTypeMismatch":    {http.StatusBadRequest, "type_mismatch", "Metric type mismatch"},
-	"InternalError":         {http.StatusInternalServerError, "internal_error", "Server internal error"},
-	"BadRequestVerbose":     {http.StatusBadRequest, "bad_request", "Bad request"},
+	"BadRequest":            {"bad_request", "Bad request", http.StatusBadRequest},
+	"MethodNotAllowed":      {"method_not_allowed", "Method not allowed", http.StatusMethodNotAllowed},
+	"MissingParameters":     {"missing_parameters", "Missing required parameters", http.StatusNotFound},
+	"InvalidValueFormat":    {"invalid_value_format", "Invalid value format", http.StatusBadRequest},
+	"UnknownMetricType":     {"unknown_metric_type", "Unknown metric type", http.StatusBadRequest},
+	"MetricNotFound":        {"metric_not_found", "Metric not found", http.StatusNotFound},
+	"ValueNotProvided":      {"value_not_provided", "Value is missing for gauge", http.StatusBadRequest},
+	"DeltaNotProvided":      {"delta_not_provided", "Delta is missing for counter", http.StatusBadRequest},
+	"FailedToUpdateMetric":  {"update_failed", "Failed to update metric", http.StatusBadRequest},
+	"InvalidJSON":           {"invalid_json", "Invalid JSON", http.StatusBadRequest},
+	"MissingRequiredFields": {"missing_fields", "Missing required fields: id or type", http.StatusBadRequest},
+	"InvalidMetricType":     {"invalid_metric_type", "Invalid metric type: must be 'gauge' or 'counter'", http.StatusBadRequest},
+	"MetricTypeMismatch":    {"type_mismatch", "Metric type mismatch", http.StatusBadRequest},
+	"InternalError":         {"internal_error", "Server internal error", http.StatusInternalServerError},
+	"BadRequestVerbose":     {"bad_request", "Bad request", http.StatusBadRequest},
 }
 
 // abortWithError отправляет JSON-ответ с ошибкой и прерывает цепочку обработки.

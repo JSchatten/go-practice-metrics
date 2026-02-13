@@ -6,27 +6,28 @@ import (
 )
 
 var (
-	ErrFilePathEmpty = errors.New("file path is not set")
-	ErrReadFile      = errors.New("failed to read metrics file")
-	ErrWriteFile     = errors.New("failed to write metrics file")
-	ErrUnmarshal     = errors.New("failed to unmarshal metrics from file")
-	ErrMarshal       = errors.New("failed to marshal metrics")
-	ErrNoData        = errors.New("no data provided for saving into file")
+	ErrFilepathEmpty = errors.New("file path is not set")
+	ErrFileRead      = errors.New("failed to read metrics file")
+	ErrFileWrite     = errors.New("failed to write metrics file")
+	ErrFileUnmarshal = errors.New("failed to unmarshal metrics from file")
+	ErrFileMarshal   = errors.New("failed to marshal metrics")
+	ErrFileNoData    = errors.New("no data provided for saving into file")
 )
 
 // Форматированные ошибки
+
 func NewErrReadFile(path string, err error) error {
-	return fmt.Errorf("%w '%s': %w", ErrReadFile, path, err)
+	return fmt.Errorf("%w '%s': %w", ErrFileRead, path, err)
 }
 
 func NewErrWriteFile(path string, err error) error {
-	return fmt.Errorf("%w '%s': %w", ErrWriteFile, path, err)
+	return fmt.Errorf("%w '%s': %w", ErrFileWrite, path, err)
 }
 
 func NewErrUnmarshal(path string, err error) error {
-	return fmt.Errorf("%w '%s': %w", ErrUnmarshal, path, err)
+	return fmt.Errorf("%w '%s': %w", ErrFileUnmarshal, path, err)
 }
 
 func NewErrMarshal(err error) error {
-	return fmt.Errorf("%w: %w", ErrMarshal, err)
+	return fmt.Errorf("%w: %w", ErrFileMarshal, err)
 }

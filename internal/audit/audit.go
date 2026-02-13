@@ -39,9 +39,9 @@ import (
 //
 // Используется всеми реализациями AuditObserver.
 type AuditEvent struct {
-	Timestamp int64    `json:"ts"`
 	Metrics   []string `json:"metrics"`
 	IPAddress string   `json:"ip_address"`
+	Timestamp int64    `json:"ts"`
 }
 
 // AuditObserver - интерфейс, который должен реализовывать каждый наблюдатель аудита.
@@ -63,8 +63,8 @@ type AuditObserver interface {
 //   - При ошибке записи логирует ошибку через zerolog
 type FileAuditObserver struct {
 	filePath string
-	mu       sync.Mutex
 	client   *http.Client
+	mu       sync.Mutex
 }
 
 // NewFileAuditObserver создаёт новый наблюдатель, пишущий в файл.
@@ -114,8 +114,8 @@ func (f *FileAuditObserver) OnAuditEvent(event AuditEvent) {
 //
 // Полезно для интеграции с внешними системами мониторинга
 type HTTPAuditObserver struct {
-	url    string
 	client *http.Client
+	url    string
 }
 
 // NewHTTPAuditObserver создаёт наблюдатель, отправляющий события на указанный URL.
@@ -165,8 +165,8 @@ func (h *HTTPAuditObserver) OnAuditEvent(event AuditEvent) {
 // Управляет наблюдателями и рассылает события.
 // Потокобезопасен при регистрации, но не при уведомлении (наблюдатели сами должны быть thread-safe).
 type AuditManager struct {
-	observers []AuditObserver
 	logger    zerolog.Logger
+	observers []AuditObserver
 }
 
 // NewAuditManager создаёт новый менеджер аудита.

@@ -9,11 +9,11 @@ import (
 )
 
 type AgentFlags struct {
-	ServerAddr     string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	HashKey        string
-	RateLimit      int
+	ServerAddr     string        // ServerAddr — адрес сервера для отправки метрик.
+	HashKey        string        // HashKey — ключ для SHA256-хеширования тела запроса.
+	RateLimit      int           // RateLimit — количество одновременных HTTP-соединений на отправку метрик.
+	PollInterval   time.Duration // PollInterval — интервал опроса метрик из runtime.
+	ReportInterval time.Duration // ReportInterval — интервал отправки метрик на сервер.
 }
 
 func InitAgentFlags() (*AgentFlags, error) {

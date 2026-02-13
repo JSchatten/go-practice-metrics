@@ -1,3 +1,24 @@
+/*
+Package agent реализует клиентский агент для сбора и отправки метрик на сервер.
+
+Агент периодически собирает системные и прикладные метрики:
+  - Статистику использования памяти (из runtime и gopsutil)
+  - Загрузку CPU (по ядрам)
+  - Случайное значение (RandomValue)
+  - Счётчик опросов (PollCount)
+
+Собранные метрики отправляются на сервер по HTTP с возможностью:
+  - Пакетной отправки (batch)
+  - Ограничения скорости (rate limiting)
+  - Параллельной обработки через пул воркеров
+
+Агент управляется через конфигурацию (AgentFlags) и поддерживает:
+  - Интервал опроса метрик (PollInterval)
+  - Интервал отправки (ReportInterval)
+  - Адрес сервера (ServerAddr)
+  - Ключ хеширования (HashKey)
+  - Ограничение RPS (RateLimit)
+*/
 package agent
 
 import (
@@ -19,6 +40,7 @@ import (
 
 const cnstBatchSize = 20
 
+// Agent — основная структура агента, управляющая сбором и отправкой метрик.
 type Agent struct {
 	config        *config.AgentFlags
 	storage       *service.MemStorage
@@ -32,6 +54,9 @@ type Agent struct {
 	rateLimiter *rate.Limiter
 }
 
+// NewAgent создаёт новый экземпляр агента с заданной конфигурацией.
+// Инициализирует хранилище, HTTP-клиент, тикеры и ограничитель скорости.
+// Возвращает указатель на Agent и ошибку, если инициализация не удалась.
 func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 	storage, err := service.NewMemStorage("", 0, false, "")
 	if err != nil {
@@ -54,6 +79,9 @@ func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 	}, nil
 }
 
+// Start запускает основной цикл агента: сбор метрик и их отправку.
+// Использует тикеры для периодического выполнения задач.
+// Работает до вызова Stop() или получения сигнала в done.
 func (a *Agent) Start() {
 	log.Println("Agent is running...")
 
@@ -88,11 +116,15 @@ func (a *Agent) Start() {
 	}
 }
 
+// Stop останавливает сбор метрик и завершает работу агента.
+// Закрывает канал done и останавливает тикеры
 func (a *Agent) Stop() {
 	a.tickerCollect.Stop()
 	close(a.done)
 }
 
+// collectMetrics собирает текущие значения метрик из системы и среды выполнения Go.
+// Обновляет внутреннее хранилище. Логирует ошибки обновления.
 func (a *Agent) collectMetrics(ctx context.Context) {
 	log.Println("Collecting metrics...")
 	var memStats runtime.MemStats
@@ -164,6 +196,8 @@ func (a *Agent) collectMetrics(ctx context.Context) {
 
 }
 
+// sendAllMetrics отправляет все собранные метрики на сервер через пул воркеров.
+// Разбивает метрики на батчи фиксированного размера (cnstBatchSize).
 func (a *Agent) sendAllMetrics(wp *workerPool) {
 	// Получаем все метрики из storage
 	metrics := a.storage.GetAllMetrics(a.ctx)
