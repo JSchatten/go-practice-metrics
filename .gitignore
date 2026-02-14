@@ -51,3 +51,7 @@ docs/
 
 # staticcheck
 staticlint
+
+# reset.go
+# Игнорировать все сгенерированные .gen.go файлы
+*.gen.go
