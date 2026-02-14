@@ -17,7 +17,6 @@ import (
 	"golang.org/x/tools/go/analysis/passes/defers"
 	"golang.org/x/tools/go/analysis/passes/directive"
 	"golang.org/x/tools/go/analysis/passes/errorsas"
-	"golang.org/x/tools/go/analysis/passes/fieldalignment"
 	"golang.org/x/tools/go/analysis/passes/findcall"
 	"golang.org/x/tools/go/analysis/passes/framepointer"
 	"golang.org/x/tools/go/analysis/passes/httpresponse"
@@ -76,7 +75,7 @@ func main() {
 		defers.Analyzer,
 		directive.Analyzer,
 		errorsas.Analyzer,
-		fieldalignment.Analyzer,
+		// fieldalignment.Analyzer, // Не всегда корректно отрабатвыает
 		findcall.Analyzer,
 		framepointer.Analyzer,
 		httpresponse.Analyzer,

@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+// ServerFlags содержит параметры командной строки сервера.
+//
+// Поля:
+//   - ServerAddr: адрес сервера для прослушивания запросов.
+//   - PostgresDSN: DSN-строка для подключения к PostgreSQL.
+//   - HashKey: ключ для SHA256-хеширования тела запроса.
+//   - ServerAuditFlags: параметры аудита.
+//   - ServerFileFlags: параметры хранения метрик в файле.
+//
 // generate:reset
 type ServerFlags struct {
 	ServerAddr       string           // ServerAddr — адрес сервера для прослушивания входящих запросов.
@@ -18,7 +27,13 @@ type ServerFlags struct {
 	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
 }
 
-// ServerFileFlags — параметры хранения метрик в файле.
+// ServerFileFlags содержит параметры хранения метрик в файле.
+//
+// Поля:
+//   - FilePath: путь к файлу для хранения метрик.
+//   - FileInterval: интервал сохранения метрик в файл (в секундах).
+//   - FileIsRestore: флаг восстановления метрик из файла при старте.
+//
 // generate:reset
 type ServerFileFlags struct {
 	FilePath      string        // FilePath — путь к файлу для хранения метрик.
@@ -26,13 +41,26 @@ type ServerFileFlags struct {
 	FileIsRestore bool          // FileIsRestore — флаг восстановления метрик из файла при старте.
 }
 
-// ServerAuditFlags — параметры аудита.
+// ServerAuditFlags содержит параметры аудита.
+//
+// Поля:
+//   - AuditFilePath: путь к файлу аудита.
+//   - AuditURL: URL для отправки событий аудита.
+//
 // generate:reset
 type ServerAuditFlags struct {
 	AuditFilePath string // AuditFilePath — путь к файлу аудита.
 	AuditURL      string // AuditURL — URL для отправки событий аудита.
 }
 
+// InitServerFlags инициализирует и возвращает структуру ServerFlags, устанавливая значения флагов.
+//
+// Значения устанавливаются в порядке приоритета:
+// 1. Флаги командной строки (имеют наивысший приоритет).
+// 2. Переменные окружения.
+// 3. Значения по умолчанию.
+//
+// Возвращает указатель на ServerFlags и ошибку, если значения параметров некорректны.
 func InitServerFlags() (*ServerFlags, error) {
 	var (
 		serverAddr      = new(string)

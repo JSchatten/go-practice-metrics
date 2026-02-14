@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 
 	"os"
 	"path/filepath"
@@ -106,8 +107,7 @@ func main() {
 	})
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error walking the path: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error walking the path: %v\n", err)
 	}
 
 	// Write reset.gen.go files
@@ -129,8 +129,7 @@ func main() {
 			buf.WriteString("\n}\n")
 		}
 		if err := os.WriteFile(outputFile, []byte(buf.String()), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", outputFile, err)
-			os.Exit(1)
+			log.Fatalf("Error writing file %s: %v\n", outputFile, err)
 		}
 	}
 }

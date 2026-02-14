@@ -25,6 +25,9 @@ BUILD_VERSION="1.2.3"
 BUILD_DATE    := $(shell date -u '+%Y-%m-%d %H:%M:%S')
 BUILD_COMMIT  := $(shell git rev-parse HEAD)
 
+default: clean recreate_dirs gen_reset test_coverage go_doc_full go_staticlint build_all
+	echo "Full build"
+
 # Recreate build directory
 .PHONY: recreate_build_dir
 recreate_build_dir:
@@ -42,9 +45,19 @@ recreate_coverage_dir:
 	mkdir -p $(COVERAGE_DIR)
 	echo "Coverage directory prepared"
 
+recreate_dirs: recreate_build_dir recreate_coverage_dir 
+	echo "recreate directories"
+
+# Generate files
+build_reset:
+	go build -o $(BUILD_DIR)/resetgen ./cmd/reset/main.go
+
+gen_reset: build_reset
+	echo "Generate reset files..."
+	$(BUILD_DIR)/resetgen
 
 # Build server
-build_server: recreate_build_dir
+build_server:
 	echo "Building server..."
 	go build \
 		-ldflags "\
@@ -56,7 +69,7 @@ build_server: recreate_build_dir
 	echo "Server built: $(BS_OUT)"
 
 # Build agent
-build_agent: recreate_build_dir
+build_agent:
 	echo "Building agent..."
 	go build \
 		-ldflags "\
@@ -66,6 +79,9 @@ build_agent: recreate_build_dir
 		" \
 		-o $(BA_OUT) $(SRC_AGENT)
 	echo "Agent built: $(BA_OUT)"
+
+build_linter:
+	go build -o $(BUILD_DIR)/staticlint cmd/staticlint/main.go
 
 # Build both
 build_all: build_agent build_server
@@ -135,6 +151,6 @@ go_doc_full: go_md_doc go_doc
 # 	echo "===\nDocs shown and generated"
 
 # 	./staticlint ./cmd/... ./internal/... ./pkg/...
-go_staticlint:
-	go build -o staticlint cmd/staticlint/main.go
-	go vet -vettool=./staticlint ./cmd/... ./internal/... ./pkg/...
+# 	go build -o staticlint cmd/staticlint/main.go
+go_staticlint: build_linter
+	go vet -vettool=$(BUILD_DIR)/staticlint ./cmd/... ./internal/... ./pkg/...
