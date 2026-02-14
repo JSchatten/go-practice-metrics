@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -40,7 +41,29 @@ import (
 	logZero "github.com/rs/zerolog/log"
 )
 
+// Build version of the application
+var buildVersion string
+
+// Build date of the application
+var buildDate string
+
+// Build commit of the application
+var buildCommit string
+
 func main() {
+
+	// Функция для получения значения или "N/A"
+	getValueOrNA := func(value string) string {
+		if value == "" {
+			return "N/A"
+		}
+		return value
+	}
+
+	// Вывод информации о сборке
+	fmt.Printf("Build version: %s\n", getValueOrNA(buildVersion))
+	fmt.Printf("Build date: %s\n", getValueOrNA(buildDate))
+	fmt.Printf("Build commit: %s\n", getValueOrNA(buildCommit))
 
 	// Вывод в консоль выполнения статиклинтера при анкомменте
 	// $ make go_staticlint

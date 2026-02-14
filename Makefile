@@ -18,6 +18,13 @@ COVERAGE_OUT := $(COVERAGE_DIR)/coverage.out
 COVERAGE_HTML := $(COVERAGE_DIR)/coverage.html
 
 
+# Build tags
+BUILD_VERSION="1.2.3"
+# BUILD_DATE=today_hehe
+# Попробуем вытащить из шелла
+BUILD_DATE    := $(shell date -u '+%Y-%m-%d %H:%M:%S')
+BUILD_COMMIT  := $(shell git rev-parse HEAD)
+
 # Recreate build directory
 .PHONY: recreate_build_dir
 recreate_build_dir:
@@ -39,13 +46,25 @@ recreate_coverage_dir:
 # Build server
 build_server: recreate_build_dir
 	echo "Building server..."
-	go build -o $(BS_OUT) $(SRC_SERVER)
+	go build \
+		-ldflags "\
+			-X 'main.buildVersion=$(BUILD_VERSION)' \
+			-X 'main.buildDate=\"$(BUILD_DATE)\"' \
+			-X 'main.buildCommit=\"$(BUILD_COMMIT)\"' \
+		" \
+		-o $(BS_OUT) $(SRC_SERVER)
 	echo "Server built: $(BS_OUT)"
 
 # Build agent
 build_agent: recreate_build_dir
 	echo "Building agent..."
-	go build -o $(BA_OUT) $(SRC_AGENT)
+	go build \
+		-ldflags "\
+			-X 'main.buildVersion=$(BUILD_VERSION)' \
+			-X 'main.buildDate=\"$(BUILD_DATE)\"' \
+			-X 'main.buildCommit=\"$(BUILD_MESSAGE)\"' \
+		" \
+		-o $(BA_OUT) $(SRC_AGENT)
 	echo "Agent built: $(BA_OUT)"
 
 # Build both
@@ -56,9 +75,15 @@ build_all: build_agent build_server
 run_server:
 	go run $(SRC_SERVER)
 
+run_server_x:
+	$(BS_OUT)
+
 # Run agent
 run_agent:
 	go run $(SRC_AGENT)
+
+run_agent_x:
+	go run $(BA_OUT)
 
 # Run binary tests
 test_by_bin: build_all
