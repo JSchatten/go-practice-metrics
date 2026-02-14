@@ -84,7 +84,7 @@ func main() {
 
 						// Generate Reset method
 						// method := generateResetMethod(typeSpec.Name.Name, structType)
-						methodCode := generateResetMethod(structType)
+						methodCode := generateResetMethod(typeSpec.Name.Name, structType)
 						info, exists := filesInfos[path]
 						if !exists {
 							info = FilesInfo{
@@ -119,10 +119,12 @@ func main() {
 		var buf strings.Builder
 		buf.WriteString("package " + filepath.Base(fileInfo.FilePath) + "\n")
 		// Add Reset methods
+
 		for _, methodInfo := range fileInfo.Methods {
+			firstLetter := strings.ToLower(methodInfo.StructName[:1])
 			buf.WriteString("\n// Reset resets the struct to its zero values.\n")
-			buf.WriteString(fmt.Sprintf("func (s *%s) Reset() {\n", methodInfo.StructName))
-			buf.WriteString("\tif s == nil {\n\t\treturn\n\t}\n")
+			buf.WriteString(fmt.Sprintf("func ("+firstLetter+" *%s) Reset() {\n", methodInfo.StructName))
+			buf.WriteString("\tif " + firstLetter + " == nil {\n\t\treturn\n\t}\n")
 			buf.WriteString(methodInfo.MethodBody)
 			buf.WriteString("\n}\n")
 		}
@@ -133,8 +135,10 @@ func main() {
 	}
 }
 
-func generateResetMethod(structType *ast.StructType) string {
+func generateResetMethod(structName string, structType *ast.StructType) string {
 	var code strings.Builder
+	// Получаем первую букву названия структуры в нижнем регистре
+	firstLetter := strings.ToLower(structName[:1])
 	for _, field := range structType.Fields.List {
 		fieldName := field.Names[0].Name
 		fieldType := field.Type
@@ -146,7 +150,7 @@ func generateResetMethod(structType *ast.StructType) string {
 			isPointer = true
 		}
 
-		fieldCode := fmt.Sprintf("\ts.%s", fieldName)
+		fieldCode := fmt.Sprintf("\t"+firstLetter+".%s", fieldName)
 
 		// Check for slices
 		if arrayType, ok := fieldType.(*ast.ArrayType); ok {
@@ -163,8 +167,8 @@ func generateResetMethod(structType *ast.StructType) string {
 
 		// Check for maps
 		if _, ok := fieldType.(*ast.MapType); ok {
-			code.WriteString("\tif s." + fieldName + " != nil {\n")
-			code.WriteString("\t\tclear(s." + fieldName + ")\n")
+			code.WriteString("\tif " + firstLetter + "." + fieldName + " != nil {\n")
+			code.WriteString("\t\tclear(" + firstLetter + "." + fieldName + ")\n")
 			code.WriteString("\t}\n")
 			continue
 		}
@@ -173,8 +177,8 @@ func generateResetMethod(structType *ast.StructType) string {
 		if ident, ok := fieldType.(*ast.Ident); ok {
 			if isResettableType(ident.Name) {
 				if isPointer {
-					code.WriteString("\n\tif s." + fieldName + " != nil {")
-					code.WriteString("\n\t\t*s." + fieldName + " = " + zeroValue(ident.Name))
+					code.WriteString("\n\tif " + firstLetter + "." + fieldName + " != nil {")
+					code.WriteString("\n\t\t*" + firstLetter + "." + fieldName + " = " + zeroValue(ident.Name))
 					code.WriteString("\n\t}")
 				} else {
 					code.WriteString("\n" + fieldCode + " = " + zeroValue(ident.Name))
@@ -182,8 +186,8 @@ func generateResetMethod(structType *ast.StructType) string {
 			} else {
 				// Assume it's a struct with Reset method
 				if isPointer {
-					code.WriteString("\n\tif s." + fieldName + " != nil {")
-					code.WriteString("\n\t\ts." + fieldName + ".Reset()")
+					code.WriteString("\n\tif " + firstLetter + "." + fieldName + " != nil {")
+					code.WriteString("\n\t\t" + firstLetter + "." + fieldName + ".Reset()")
 					code.WriteString("\n\t}")
 				} else {
 					code.WriteString("\n" + fieldCode + ".Reset()")

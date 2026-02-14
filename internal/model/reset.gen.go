@@ -1,18 +1,18 @@
 package model
 
 // Reset resets the struct to its zero values.
-func (s *Metrics) Reset() {
-	if s == nil {
+func (m *Metrics) Reset() {
+	if m == nil {
 		return
 	}
 
-	s.ID = ""
-	s.MType = ""
-	if s.Delta != nil {
-		*s.Delta = 0
+	m.ID = ""
+	m.MType = ""
+	if m.Delta != nil {
+		*m.Delta = 0
 	}
-	if s.Value != nil {
-		*s.Value = 0.0
+	if m.Value != nil {
+		*m.Value = 0.0
 	}
-	s.Hash = ""
+	m.Hash = ""
 }

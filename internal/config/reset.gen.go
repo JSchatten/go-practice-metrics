@@ -1,14 +1,14 @@
 package config
 
 // Reset resets the struct to its zero values.
-func (s *AgentFlags) Reset() {
-	if s == nil {
+func (a *AgentFlags) Reset() {
+	if a == nil {
 		return
 	}
 
-	s.ServerAddr = ""
-	s.HashKey = ""
-	s.RateLimit = 0
+	a.ServerAddr = ""
+	a.HashKey = ""
+	a.RateLimit = 0
 }
 
 // Reset resets the struct to its zero values.
