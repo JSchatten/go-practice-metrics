@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,13 +14,20 @@ import (
 
 type MethodInfo struct {
 	StructName string
-	MethodBody []string
+	MethodBody string
 }
 
+type FilesInfo struct {
+	FilePath string
+	Methods  []MethodInfo
+}
+
+const root = "."
+
 func main() {
-	root := "."
 	fileSets := token.NewFileSet()
-	packageMethods := make(map[string]MethodInfo) // key: dir → info
+
+	filesInfos := make(map[string]FilesInfo)
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -41,12 +49,14 @@ func main() {
 
 		for _, pkg := range astFile {
 			for _, file := range pkg.Files {
+
 				for _, decl := range file.Decls {
 					genDecl, ok := decl.(*ast.GenDecl)
 					if !ok || genDecl.Tok != token.TYPE {
 						continue
 					}
 					for _, spec := range genDecl.Specs {
+
 						typeSpec, ok := spec.(*ast.TypeSpec)
 						if !ok {
 							continue
@@ -56,8 +66,8 @@ func main() {
 							continue
 						}
 
-						fmt.Println(structType)
-						// Check for // generate:reset comment
+						// fmt.Println(structType)
+						// Check for  "generate:reset" comment
 						if genDecl.Doc == nil {
 							continue
 						}
@@ -75,18 +85,21 @@ func main() {
 						// Generate Reset method
 						// method := generateResetMethod(typeSpec.Name.Name, structType)
 						methodCode := generateResetMethod(structType)
-						info, exists := packageMethods[path]
+						info, exists := filesInfos[path]
 						if !exists {
-							info = MethodInfo{
-								StructName: typeSpec.Name.Name,
-								MethodBody: []string{},
+							info = FilesInfo{
+								FilePath: path,
+								Methods:  []MethodInfo{},
 							}
-							info.MethodBody = append(info.MethodBody, methodCode)
 						}
-						packageMethods[path] = info
-						fmt.Println("NEXT STRUCT")
+						info.Methods = append(info.Methods, MethodInfo{
+							StructName: typeSpec.Name.Name,
+							MethodBody: methodCode,
+						})
+						filesInfos[path] = info
 					}
 				}
+
 			}
 		}
 		return nil
@@ -98,39 +111,31 @@ func main() {
 	}
 
 	// Write reset.gen.go files
-	fmt.Println("=======\nSTART GENERATING")
-	fmt.Println(packageMethods)
-	fmt.Println("----------")
-	for dir, info := range packageMethods {
-		fmt.Println(dir, info)
-		if len(info.MethodBody) == 0 {
+	for _, fileInfo := range filesInfos {
+		if len(fileInfo.Methods) == 0 {
 			continue
 		}
-		outputFile := filepath.Join(dir, "reset.gen.go")
+		outputFile := filepath.Join(fileInfo.FilePath, "reset.gen.go")
 		var buf strings.Builder
-		buf.WriteString("package " + filepath.Base(dir) + "\n\n")
-		// Add Reset method
-		buf.WriteString("// Reset resets the struct to its zero values.\n")
-		buf.WriteString(fmt.Sprintf("func (s *%s) Reset() {\n", info.StructName))
-		buf.WriteString("\tif s == nil {\n\t\treturn\n\t}\n")
-		for _, line := range info.MethodBody {
-			buf.WriteString(line + "\n")
+		buf.WriteString("package " + filepath.Base(fileInfo.FilePath) + "\n")
+		// Add Reset methods
+		for _, methodInfo := range fileInfo.Methods {
+			buf.WriteString("\n// Reset resets the struct to its zero values.\n")
+			buf.WriteString(fmt.Sprintf("func (s *%s) Reset() {\n", methodInfo.StructName))
+			buf.WriteString("\tif s == nil {\n\t\treturn\n\t}\n")
+			buf.WriteString(methodInfo.MethodBody)
+			buf.WriteString("\n}\n")
 		}
-
-		buf.WriteString("}\n")
 		if err := os.WriteFile(outputFile, []byte(buf.String()), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", outputFile, err)
 			os.Exit(1)
 		}
-		fmt.Println("+++++++++++++")
 	}
 }
 
 func generateResetMethod(structType *ast.StructType) string {
 	var code strings.Builder
-	fmt.Println(*structType)
 	for _, field := range structType.Fields.List {
-		fmt.Println(field.Names)
 		fieldName := field.Names[0].Name
 		fieldType := field.Type
 
@@ -147,12 +152,12 @@ func generateResetMethod(structType *ast.StructType) string {
 		if arrayType, ok := fieldType.(*ast.ArrayType); ok {
 			if arrayType.Len != nil {
 				// fixed array
-				code.WriteString(fieldCode + " = " + fmt.Sprintf("%#v", reflect.Zero(reflect.TypeOf((*ast.ArrayType)(nil)).Elem()).Interface()) + "\n")
+				code.WriteString(fieldCode + " = " + fmt.Sprintf("%#v", reflect.Zero(reflect.TypeOf((*ast.ArrayType)(nil)).Elem()).Interface()))
 			} else {
 				// slice
-				code.WriteString(fieldCode + " = " + fieldCode + "[:0]\n")
+				code.WriteString(fieldCode + " = " + fieldCode + "[:0]")
 			}
-			// code.WriteString("\n")
+			code.WriteString("\n")
 			continue
 		}
 
@@ -168,22 +173,23 @@ func generateResetMethod(structType *ast.StructType) string {
 		if ident, ok := fieldType.(*ast.Ident); ok {
 			if isResettableType(ident.Name) {
 				if isPointer {
-					code.WriteString("\tif s." + fieldName + " != nil {\n")
-					code.WriteString("\t\t*s." + fieldName + " = " + zeroValue(ident.Name) + "\n")
-					code.WriteString("\t}\n")
+					code.WriteString("\n\tif s." + fieldName + " != nil {")
+					code.WriteString("\n\t\t*s." + fieldName + " = " + zeroValue(ident.Name))
+					code.WriteString("\n\t}")
 				} else {
-					code.WriteString(fieldCode + " = " + zeroValue(ident.Name) + "\n")
+					code.WriteString("\n" + fieldCode + " = " + zeroValue(ident.Name))
 				}
 			} else {
 				// Assume it's a struct with Reset method
 				if isPointer {
-					code.WriteString("\tif s." + fieldName + " != nil {\n")
-					code.WriteString("\t\ts." + fieldName + ".Reset()\n")
-					code.WriteString("\t}\n")
+					code.WriteString("\n\tif s." + fieldName + " != nil {")
+					code.WriteString("\n\t\ts." + fieldName + ".Reset()")
+					code.WriteString("\n\t}")
 				} else {
-					code.WriteString(fieldCode + ".Reset()\n")
+					code.WriteString("\n" + fieldCode + ".Reset()")
 				}
 			}
+			// code.WriteString("\n")
 			continue
 		}
 	}

@@ -5,6 +5,7 @@ func (s *Metrics) Reset() {
 	if s == nil {
 		return
 	}
+
 	s.ID = ""
 	s.MType = ""
 	if s.Delta != nil {
@@ -14,5 +15,4 @@ func (s *Metrics) Reset() {
 		*s.Value = 0.0
 	}
 	s.Hash = ""
-
 }

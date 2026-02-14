@@ -18,16 +18,16 @@ type ServerFlags struct {
 	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
 }
 
-// generate:reset
 // ServerFileFlags — параметры хранения метрик в файле.
+// generate:reset
 type ServerFileFlags struct {
 	FilePath      string        // FilePath — путь к файлу для хранения метрик.
 	FileInterval  time.Duration // FileInterval — интервал сохранения метрик в файл (в секундах).
 	FileIsRestore bool          // FileIsRestore — флаг восстановления метрик из файла при старте.
 }
 
-// generate:reset
 // ServerAuditFlags — параметры аудита.
+// generate:reset
 type ServerAuditFlags struct {
 	AuditFilePath string // AuditFilePath — путь к файлу аудита.
 	AuditURL      string // AuditURL — URL для отправки событий аудита.
