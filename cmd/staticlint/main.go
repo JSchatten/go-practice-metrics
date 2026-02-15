@@ -120,7 +120,6 @@ func main() {
 	}
 
 	analyzers = append(analyzers, unused.Analyzer.Analyzer)
-	analyzers = append(analyzers, checkers.Analyzer)
 
 	// кастомный
 	analyzers = append(analyzers, checkers.Analyzer)
