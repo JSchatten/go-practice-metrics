@@ -41,13 +41,51 @@ import (
 	logZero "github.com/rs/zerolog/log"
 )
 
+// Build version of the application
+var buildVersion string
+
+// Build date of the application
+var buildDate string
+
+// Build commit of the application
+var buildCommit string
+
 func main() {
+
+	// Функция для получения значения или "N/A"
+	getValueOrNA := func(value string) string {
+		if value == "" {
+			return "N/A"
+		}
+		return value
+	}
+
+	// Вывод информации о сборке
+	fmt.Printf("Build version: %s\n", getValueOrNA(buildVersion))
+	fmt.Printf("Build date: %s\n", getValueOrNA(buildDate))
+	fmt.Printf("Build commit: %s\n", getValueOrNA(buildCommit))
+
+	// Вывод в консоль выполнения статиклинтера при анкомменте
+	// $ make go_staticlint
+	// go build -o staticlint cmd/staticlint/main.go
+	// go vet -vettool=./staticlint ./cmd/... ./internal/... ./pkg/...
+	// go: warning: "./pkg/..." matched no packages
+	// # github.com/JSchatten/go-practice-metrics/cmd/server
+	// # [github.com/JSchatten/go-practice-metrics/cmd/server]
+	// cmd/server/main.go:47:6: the argument is already a string, there's no need to use fmt.Sprintf
+	// cmd/server/main.go:55:3: запрещён прямой вызов os.Exit в функции main пакета main
+	// make: *** [Makefile:115: go_staticlint] Error 1
+
+	// s := "hello"
+	// _ = fmt.Sprintf("%s", s) // ← должен поймать S1025
+	// Поймали the argument is already a string, there's no need to use fmt.Sprintf
 
 	cfg, err := config.InitServerFlags()
 
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
+		// fmt.Println(err)
+		// os.Exit(1)
 	}
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix

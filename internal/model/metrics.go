@@ -1,7 +1,12 @@
-// Package models предоставляет основные структуры данных для работы с метриками.
-// Включает в себя модель метрики, валидацию, конструкторы и обработку ошибок.
+// Package model
+// Предоставляет основные структуры данных для работы с метриками.
+// Включает в себя:
+//   - Описание метрик (Metrics) с поддержкой типов counter и gauge.
+//   - Конструктор NewMetrics для создания метрик из строки.
+//   - Метод Validate для проверки корректности метрики.
+//   - Реализацию fmt.Stringer для удобного вывода.
 
-package models
+package model
 
 import (
 	"encoding/json"
@@ -22,6 +27,7 @@ const (
 // и соответственно не кодировать в структуру.
 
 // Metrics описывает сущность метрики
+// generate:reset
 type Metrics struct {
 	// ID - уникальный идентификатор метрики (имя метрики).
 	ID string `json:"id"`
@@ -38,7 +44,7 @@ type Metrics struct {
 
 // Добавленный код для Metrics
 
-// Validate checks if the Metrics instance is valid.
+// String Validate checks if the Metrics instance is valid.
 // String возвращает строковое представление метрики в формате JSON.
 // Если метрика равна nil, возвращается "<nil>".
 // В случае ошибки маршалинга возвращается описание ошибки.

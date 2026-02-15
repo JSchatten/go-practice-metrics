@@ -102,7 +102,7 @@ func TestFileRepository_SaveMetrics_EmptyData(t *testing.T) {
 	repo := NewFileRepository(filePath)
 	err := repo.SaveMetrics([]byte{})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrNoData)
+	require.ErrorIs(t, err, ErrFileNoData)
 }
 
 func TestFileRepository_SaveMetrics_NoFilePath(t *testing.T) {

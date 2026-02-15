@@ -8,14 +8,32 @@ import (
 	"time"
 )
 
+// AgentFlags содержит параметры командной строки агента.
+//
+// Поля:
+//   - ServerAddr: адрес сервера для отправки метрик.
+//   - HashKey: ключ для SHA256-хеширования тела запроса.
+//   - RateLimit: количество одновременных HTTP-соединений.
+//   - PollInterval: интервал опроса метрик из runtime (в секундах).
+//   - ReportInterval: интервал отправки метрик на сервер (в секундах).
+//
+// generate:reset
 type AgentFlags struct {
-	ServerAddr     string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	HashKey        string
-	RateLimit      int
+	ServerAddr     string        // ServerAddr — адрес сервера для отправки метрик.
+	HashKey        string        // HashKey — ключ для SHA256-хеширования тела запроса.
+	RateLimit      int           // RateLimit — количество одновременных HTTP-соединений на отправку метрик.
+	PollInterval   time.Duration // PollInterval — интервал опроса метрик из runtime.
+	ReportInterval time.Duration // ReportInterval — интервал отправки метрик на сервер.
 }
 
+// InitAgentFlags инициализирует и возвращает структуру AgentFlags, устанавливая значения флагов.
+//
+// Значения устанавливаются в порядке приоритета:
+// 1. Флаги командной строки (имеют наивысший приоритет).
+// 2. Переменные окружения.
+// 3. Значения по умолчанию.
+//
+// Возвращает указатель на AgentFlags и ошибку, если значения параметров некорректны.
 func InitAgentFlags() (*AgentFlags, error) {
 	var (
 		pollInterval   = new(int)

@@ -14,13 +14,13 @@ import (
 )
 
 type workerPool struct {
-	client     *resty.Client
 	serverAddr string
 	hashKey    string
 	limiter    *rate.Limiter
 	batchCh    chan []MetricsModel.Metrics
 	ctx        context.Context
 	wg         sync.WaitGroup
+	client     *resty.Client
 }
 
 func newWorkerPool(

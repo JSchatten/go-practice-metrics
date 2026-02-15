@@ -48,3 +48,10 @@ metrics.json
 go_test/
 # Docs
 docs/
+
+# staticcheck
+staticlint
+
+# reset.go
+# Игнорировать все сгенерированные .gen.go файлыб ломает go list gopls
+*.gen.go
