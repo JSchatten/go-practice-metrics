@@ -24,6 +24,7 @@ type AgentFlags struct {
 	RateLimit      int           // RateLimit — количество одновременных HTTP-соединений на отправку метрик.
 	PollInterval   time.Duration // PollInterval — интервал опроса метрик из runtime.
 	ReportInterval time.Duration // ReportInterval — интервал отправки метрик на сервер.
+	CryptoKey      string        // CryptoKey — путь к файлу с публичным ключом для шифрования тела запроса.
 }
 
 // InitAgentFlags инициализирует и возвращает структуру AgentFlags, устанавливая значения флагов.
@@ -40,6 +41,7 @@ func InitAgentFlags() (*AgentFlags, error) {
 		reportInterval = new(int)
 		serverAddr     = new(string)
 		hashKey        = new(string)
+		cryptoKey      = new(string)
 		rateLimit      = new(int)
 	)
 
@@ -67,6 +69,9 @@ func InitAgentFlags() (*AgentFlags, error) {
 	if v, exists := os.LookupEnv("KEY"); exists {
 		*hashKey = v
 	}
+	if v, exists := os.LookupEnv("CRYPTO_KEY"); exists {
+		*cryptoKey = v
+	}
 	if v, exists := os.LookupEnv("RATE_LIMIT"); exists {
 		if val, err := strconv.Atoi(v); err == nil {
 			*rateLimit = val
@@ -78,6 +83,7 @@ func InitAgentFlags() (*AgentFlags, error) {
 	flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
 	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
+	flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
 	flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
 
 	flag.Parse()
@@ -101,11 +107,14 @@ func InitAgentFlags() (*AgentFlags, error) {
 		}
 	}
 
+	// fmt.Println(cryptoKey, *cryptoKey)
+
 	return &AgentFlags{
 		PollInterval:   time.Duration(*pollInterval) * time.Second,
 		ReportInterval: time.Duration(*reportInterval) * time.Second,
 		ServerAddr:     *serverAddr,
 		HashKey:        *hashKey,
 		RateLimit:      *rateLimit,
+		CryptoKey:      *cryptoKey,
 	}, nil
 }

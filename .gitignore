@@ -55,3 +55,6 @@ staticlint
 # reset.go
 # Игнорировать все сгенерированные .gen.go файлыб ломает go list gopls
 *.gen.go
+
+# crypto
+*.pem

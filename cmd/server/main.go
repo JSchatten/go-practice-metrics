@@ -132,6 +132,13 @@ func main() {
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
 	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
 	router.Use(gzipMiddleaware.GzipMiddleware())
+	// Устанавливаем ключ шифрования в контекст
+	if cfg.CryptoKey != "" {
+		router.Use(func(c *gin.Context) {
+			c.Set("cryptoKey", cfg.CryptoKey)
+			c.Next()
+		})
+	}
 	// routes
 	router.POST("/update/", handlers.UpdateHandler(storageObj))
 	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))

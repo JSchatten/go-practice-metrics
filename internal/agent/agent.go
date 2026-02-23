@@ -91,6 +91,7 @@ func (a *Agent) Start() {
 		a.httpClient,
 		a.config.ServerAddr,
 		a.config.HashKey,
+		a.config.CryptoKey,
 		a.rateLimiter,
 		batchCh,
 		a.ctx,
