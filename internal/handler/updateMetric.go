@@ -48,13 +48,13 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 			}
 
 			// Дешифруем тело запроса
-			decryptedBody, err := crypto.DecryptWithPrivateKey(privKey, body)
+			decryptedBody, err := crypto.HybridDecrypt(privKey, string(body))
 			if err != nil {
-				logZero.Logger.Error().Err(err).Msg("Failed to decrypt request body")
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt request body"})
+				logZero.Logger.Error().Err(err).Msg("Failed to hybrid decrypt request body")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hybrid decrypt request body"})
 				return
 			}
-			logZero.Logger.Info().Msgf("Successfully decrypted %d bytes of data", len(decryptedBody))
+			logZero.Logger.Info().Msgf("Successfully hybrid decrypted %d bytes of data", len(decryptedBody))
 			body = decryptedBody
 		}
 
@@ -124,13 +124,13 @@ func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 			}
 
 			// Дешифруем тело запроса
-			decryptedBody, err := crypto.DecryptWithPrivateKey(privKey, body)
+			decryptedBody, err := crypto.HybridDecrypt(privKey, string(body))
 			if err != nil {
-				logZero.Logger.Error().Err(err).Msg("Failed to decrypt request body")
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decrypt request body"})
+				logZero.Logger.Error().Err(err).Msg("Failed to hybrid decrypt request body")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hybrid decrypt request body"})
 				return
 			}
-			logZero.Logger.Info().Msgf("Successfully decrypted %d bytes of data", len(decryptedBody))
+			logZero.Logger.Info().Msgf("Successfully hybrid decrypted %d bytes of data", len(decryptedBody))
 			body = decryptedBody
 		}
 

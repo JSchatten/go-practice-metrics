@@ -108,13 +108,13 @@ func (wp *workerPool) sendBatch(metrics []MetricsModel.Metrics) {
 			return
 		}
 
-		encryptedData, err := crypto.EncryptWithPublicKey(pubKey, jsonData)
+		encryptedData, err := crypto.HybridEncrypt(pubKey, jsonData)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to encrypt request body")
+			log.Error().Err(err).Msg("Failed to hybrid encrypt request body")
 			return
 		}
-		bodyData = encryptedData
-		log.Info().Msgf("Successfully encrypted %d bytes of data", len(encryptedData))
+		bodyData = []byte(encryptedData)
+		log.Info().Msgf("Successfully hybrid encrypted %d bytes of data", len(encryptedData))
 	}
 
 	compressed, err := gzip.CompressGZIP(bodyData)
