@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ServerFlags содержит параметры командной строки сервера.
@@ -85,12 +85,30 @@ func InitServerFlags() (*ServerFlags, error) {
 	*fileIntervalSec = constFileIntervalSec
 	*restoreFromFile = constRestoreFromFile
 
-	// Получаем путь к конфигурационному файлу
+	// Получаем путь к конфигурационному файлу из окружения
 	if v, exists := os.LookupEnv("CONFIG"); exists {
 		*configPath = v
 	}
+
+	// Флаги
+	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
+	flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
+	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
+	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
+	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
+	flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
+	flag.StringVar(cryptoKeyEnv, "crypto-key", *cryptoKeyEnv, "Path to private key file for decrypting request body (optional)")
+	// audit
+	flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
+	flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
+	// config
 	flag.StringVar(configPath, "c", *configPath, "Path to config file")
 	flag.StringVar(configPath, "config", *configPath, "Path to config file")
+
+	flag.Parse()
+	if flag.NArg() > 0 {
+		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
+	}
 
 	// Загружаем конфигурацию из файла, если указан
 	if *configPath != "" {
@@ -98,7 +116,7 @@ func InitServerFlags() (*ServerFlags, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load server config: %w", err)
 		}
-		// Применяем значения из файла, если они не заданы через env или флаги
+		// Применяем значения из файла, если они не были заданы через флаги
 		if *serverAddr == constServerAddr {
 			*serverAddr = config.Address
 		}
@@ -107,10 +125,11 @@ func InitServerFlags() (*ServerFlags, error) {
 		}
 		if *fileIntervalSec == constFileIntervalSec {
 			interval, err := time.ParseDuration(config.StoreInterval)
-			if err != nil {
-				return nil, fmt.Errorf("invalid store_interval in config: %w", err)
+			if err == nil {
+				*fileIntervalSec = int(interval.Seconds())
+			} else {
+				log.Warn().Err(err).Msg("Invalid store_interval in config")
 			}
-			*fileIntervalSec = int(interval.Seconds())
 		}
 		if *restoreFromFile == constRestoreFromFile {
 			*restoreFromFile = config.Restore
@@ -123,66 +142,25 @@ func InitServerFlags() (*ServerFlags, error) {
 		}
 	}
 
-	// fmt.Println("hashKey q", *hashKeyEnv)
-	// fmt.Println("hashKey q", *hashKeyEnv)
-
-	if v, exists := os.LookupEnv("ADDRESS"); exists {
-		*serverAddr = v
-	}
-	if v, exists := os.LookupEnv("FILE_STORAGE_PATH"); exists {
-		*filePath = v
-	}
-	if v, exists := os.LookupEnv("STORE_INTERVAL"); exists {
-		if val, err := strconv.Atoi(v); err == nil && val >= 0 {
-			*fileIntervalSec = val
-		}
-	}
-	if v, exists := os.LookupEnv("RESTORE"); exists {
-		v = strings.TrimSpace(v)
-		switch strings.ToLower(v) {
-		case "1", "t", "true":
-			*restoreFromFile = true
-		case "0", "f", "false", "":
-			*restoreFromFile = false
-		default:
-			// Пытались передать странное, вернём обратно в дефолт
-			*restoreFromFile = constRestoreFromFile
-		}
-	}
-	if v, exists := os.LookupEnv("DATABASE_DSN"); exists {
-		*postgresDSN = v
-	}
-	if v, exists := os.LookupEnv("KEY"); exists {
-		*hashKeyEnv = v
-	}
-	if v, exists := os.LookupEnv("CRYPTO_KEY"); exists {
-		*cryptoKeyEnv = v
-	}
-
-	// audit
-	if v, exists := os.LookupEnv("AUDIT_FILE"); exists {
-		*auditFilePath = v
-	}
-	if v, exists := os.LookupEnv("AUDIT_URL"); exists {
-		*auditURL = v
-	}
-
 	// Флаги, они перекроют config (если есть) и default
-	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
-	flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
-	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
-	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
-	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
-	flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
-	flag.StringVar(cryptoKeyEnv, "crypto-key", *cryptoKeyEnv, "Path to private key file for decrypting request body (optional)")
-	//	audit
-	flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
-	flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
+	// flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
+	// flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
+	// flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
+	// flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
+	// flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
+	// flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
+	// flag.StringVar(cryptoKeyEnv, "crypto-key", *cryptoKeyEnv, "Path to private key file for decrypting request body (optional)")
+	// //	audit
+	// flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
+	// flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
 
-	flag.Parse()
-	if flag.NArg() > 0 {
-		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
-	}
+	// flag.Parse()
+	// if flag.NArg() > 0 {
+	// 	return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
+	// }
+
+	fmt.Println("*configPath")
+	fmt.Println(*configPath)
 
 	// Проверим: был ли флаг -d передан явно
 	wasDSNFlagSet := false
@@ -236,6 +214,16 @@ func InitServerFlags() (*ServerFlags, error) {
 	if *hashKeyFlags != *hashKeyEnv && *hashKeyFlags == "invalidkey" {
 		result.HashKey = *hashKeyEnv
 	}
+
+	// Проверка флагов после обработки конфигурации
+	if *hashKeyFlags != "" {
+		result.HashKey = *hashKeyFlags
+	} else if *hashKeyEnv != "" {
+		result.HashKey = *hashKeyEnv
+	}
+
+	fmt.Println("result")
+	fmt.Println(result)
 
 	return result, nil
 }

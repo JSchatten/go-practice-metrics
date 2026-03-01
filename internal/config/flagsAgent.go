@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // AgentFlags содержит параметры командной строки агента.
@@ -51,12 +52,26 @@ func InitAgentFlags() (*AgentFlags, error) {
 	*reportInterval = constReportInterval
 	*serverAddr = constServerAddr
 
-	// Получаем путь к конфигурационному файлу
+	// Получаем путь к конфигурационному файлу из окружения
 	if v, exists := os.LookupEnv("CONFIG"); exists {
 		*configPath = v
 	}
+
+	// Флаги
+	flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
+	flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
+	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
+	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
+	flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
+	flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
+	// config
 	flag.StringVar(configPath, "c", *configPath, "Path to config file")
 	flag.StringVar(configPath, "config", *configPath, "Path to config file")
+
+	flag.Parse()
+	if flag.NArg() > 0 {
+		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
+	}
 
 	// Загружаем конфигурацию из файла, если указан
 	if *configPath != "" {
@@ -64,70 +79,43 @@ func InitAgentFlags() (*AgentFlags, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load agent config: %w", err)
 		}
-		// Применяем значения из файла, если они не заданы через env или флаги
+		// Применяем значения из файла, если они не были заданы через флаги
 		if *serverAddr == constServerAddr {
 			*serverAddr = config.Address
 		}
 		if *reportInterval == constReportInterval {
 			interval, err := time.ParseDuration(config.ReportInterval)
-			if err != nil {
-				return nil, fmt.Errorf("invalid report_interval in config: %w", err)
+			if err == nil {
+				*reportInterval = int(interval.Seconds())
+			} else {
+				log.Warn().Err(err).Msg("invalid report_interval in config")
 			}
-			*reportInterval = int(interval.Seconds())
 		}
 		if *pollInterval == constPollInterval {
 			interval, err := time.ParseDuration(config.PollInterval)
-			if err != nil {
-				return nil, fmt.Errorf("invalid poll_interval in config: %w", err)
+			if err == nil {
+				*pollInterval = int(interval.Seconds())
+			} else {
+				log.Warn().Err(err).Msg("invalid poll_interval in config")
 			}
-			*pollInterval = int(interval.Seconds())
 		}
 		if *cryptoKey == "" {
 			*cryptoKey = config.CryptoKey
 		}
 	}
 
-	// Читаем окружение
-	if v, exists := os.LookupEnv("POLL_INTERVAL"); exists {
-		if val, err := strconv.Atoi(v); err == nil {
-			*pollInterval = val
-		}
-	}
-
-	if v, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
-		if val, err := strconv.Atoi(v); err == nil {
-			*reportInterval = val
-		}
-	}
-
-	if v, exists := os.LookupEnv("ADDRESS"); exists {
-		*serverAddr = v
-	}
-
-	if v, exists := os.LookupEnv("KEY"); exists {
-		*hashKey = v
-	}
-	if v, exists := os.LookupEnv("CRYPTO_KEY"); exists {
-		*cryptoKey = v
-	}
-	if v, exists := os.LookupEnv("RATE_LIMIT"); exists {
-		if val, err := strconv.Atoi(v); err == nil {
-			*rateLimit = val
-		}
-	}
-
 	// Регистрируем флаги — они перекроют env, config (если есть) и default
-	flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
-	flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
-	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
-	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
-	flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
-	flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
+	// flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
+	// flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
+	// flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
+	// flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
+	// flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
+	// flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
 
-	flag.Parse()
-	if flag.NArg() > 0 {
-		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
-	}
+	// flag.Parse()
+	// if flag.NArg() > 0 {
+	// 	return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
+	// }
 
 	// Финальная проверка
 	if *pollInterval <= 0 {
