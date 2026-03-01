@@ -96,7 +96,7 @@ func (wp *workerPool) sendBatch(metrics []MetricsModel.Metrics) {
 	// ERR Failed to encrypt request body error="crypto/rsa: message too long for RSA key
 	log.Info().Int("json_size", len(jsonData)).Msg("JSON size before encryption")
 	// Шифруем тело запроса, если указан путь к публичному ключу
-	var bodyData []byte = jsonData
+	bodyData := jsonData
 	if wp.cryptoKey != "" {
 		log.Info().Msgf("Using public key for encryption: %s", wp.cryptoKey)
 		pubKey, err := crypto.LoadRSAPublicKey(wp.cryptoKey)

@@ -131,7 +131,7 @@ func InitServerFlags() (*ServerFlags, error) {
 				log.Warn().Err(err).Msg("Invalid store_interval in config")
 			}
 		}
-		if *restoreFromFile == constRestoreFromFile {
+		if *restoreFromFile {
 			*restoreFromFile = config.Restore
 		}
 		if *postgresDSN == "" {
