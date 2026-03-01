@@ -142,26 +142,6 @@ func InitServerFlags() (*ServerFlags, error) {
 		}
 	}
 
-	// Флаги, они перекроют config (если есть) и default
-	// flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
-	// flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
-	// flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
-	// flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
-	// flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
-	// flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
-	// flag.StringVar(cryptoKeyEnv, "crypto-key", *cryptoKeyEnv, "Path to private key file for decrypting request body (optional)")
-	// //	audit
-	// flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
-	// flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
-
-	// flag.Parse()
-	// if flag.NArg() > 0 {
-	// 	return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
-	// }
-
-	fmt.Println("*configPath")
-	fmt.Println(*configPath)
-
 	// Проверим: был ли флаг -d передан явно
 	wasDSNFlagSet := false
 	flag.Visit(func(f *flag.Flag) {
@@ -221,9 +201,6 @@ func InitServerFlags() (*ServerFlags, error) {
 	} else if *hashKeyEnv != "" {
 		result.HashKey = *hashKeyEnv
 	}
-
-	fmt.Println("result")
-	fmt.Println(result)
 
 	return result, nil
 }

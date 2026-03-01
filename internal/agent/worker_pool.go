@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/JSchatten/go-practice-metrics/internal/crypto"
@@ -98,8 +97,6 @@ func (wp *workerPool) sendBatch(metrics []MetricsModel.Metrics) {
 	log.Info().Int("json_size", len(jsonData)).Msg("JSON size before encryption")
 	// Шифруем тело запроса, если указан путь к публичному ключу
 	var bodyData []byte = jsonData
-	fmt.Println("wp.cryptoKey")
-	fmt.Println(wp.cryptoKey)
 	if wp.cryptoKey != "" {
 		log.Info().Msgf("Using public key for encryption: %s", wp.cryptoKey)
 		pubKey, err := crypto.LoadRSAPublicKey(wp.cryptoKey)

@@ -104,19 +104,6 @@ func InitAgentFlags() (*AgentFlags, error) {
 		}
 	}
 
-	// Регистрируем флаги — они перекроют env, config (если есть) и default
-	// flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
-	// flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
-	// flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
-	// flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
-	// flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
-	// flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
-
-	// flag.Parse()
-	// if flag.NArg() > 0 {
-	// 	return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
-	// }
-
 	// Финальная проверка
 	if *pollInterval <= 0 {
 		return nil, ErrInvalidPollInterval
@@ -132,8 +119,6 @@ func InitAgentFlags() (*AgentFlags, error) {
 			return nil, ErrInvalidRateLimit
 		}
 	}
-
-	// fmt.Println(cryptoKey, *cryptoKey)
 
 	return &AgentFlags{
 		PollInterval:   time.Duration(*pollInterval) * time.Second,
