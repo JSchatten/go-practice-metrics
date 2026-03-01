@@ -160,7 +160,7 @@ func main() {
 
 	// Перехват сигналов завершения
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 
 	logZero.Logger.Info().Msg("Shutting down server...")

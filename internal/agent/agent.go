@@ -118,10 +118,57 @@ func (a *Agent) Start() {
 }
 
 // Stop останавливает сбор метрик и завершает работу агента.
-// Закрывает канал done и останавливает тикеры
+// Закрывает канал done, останавливает тикеры и отправляет оставшиеся метрики.
+// Не придумал, как сделать это красиво без создания временных пулов
+// и копипасты из Start()
 func (a *Agent) Stop() {
+	log.Println("Stopping agent...")
+
+	// 1. Останавливаем тикеры
 	a.tickerCollect.Stop()
-	close(a.done)
+
+	a.collectMetrics(a.ctx)
+
+	batchCh := make(chan []MetricsModel.Metrics, 100)
+	tempWorkerPool := newWorkerPool(
+		a.httpClient,
+		a.config.ServerAddr,
+		a.config.HashKey,
+		a.config.CryptoKey,
+		a.rateLimiter,
+		batchCh,
+		a.ctx,
+	)
+	tempWorkerPool.start(a.config.RateLimit)
+
+	metrics := a.storage.GetAllMetrics(a.ctx)
+	if len(metrics) > 0 {
+		log.Printf("Final send: %d metrics", len(metrics))
+		for i := 0; i < len(metrics); i += cnstBatchSize {
+			end := i + cnstBatchSize
+			if end > len(metrics) {
+				end = len(metrics)
+			}
+			select {
+			case batchCh <- metrics[i:end]:
+				// Батч отправлен в канал
+			case <-time.After(5 * time.Second):
+				log.Println("Timeout sending final batch, skipping...")
+			}
+		}
+	}
+
+	// close(batchCh) вызовет панику, т.к. закрытие канала произойдёт раньше,
+	// чем будут обработаны данные. Да, есть правила:
+	// - Канал должен закрываться той же горутиной, которая его создала.
+	// - Тот, кто отправляет данные — тот и закрывает канал.
+	// Но я уже немного теряюсь в коде.
+	// TODO: надо будеет перелопатить код воркера отправки данных ^^^
+	// close(batchCh)
+
+	tempWorkerPool.wait()
+
+	log.Println("All metrics sent. Agent stopped.")
 }
 
 // collectMetrics собирает текущие значения метрик из системы и среды выполнения Go.
@@ -220,4 +267,6 @@ func (a *Agent) sendAllMetrics(wp *workerPool) {
 		// Асинхронная отправка
 		wp.SendBatch(batch)
 	}
+	fmt.Println("pppppppp")
+
 }

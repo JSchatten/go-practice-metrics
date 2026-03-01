@@ -58,7 +58,7 @@ func main() {
 		logZero.Logger.Fatal().Err(err).Msg("Failed start agent NewAgent")
 	}
 	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(done, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Запуск сбора и отправки метрик
 	go func() {
