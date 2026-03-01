@@ -36,9 +36,6 @@ build/
 # Air
 tmp/
 
-# debug metrics.json
-metrics.json
-
 # logs from stdout
 *.log
 *.txt
@@ -58,3 +55,6 @@ staticlint
 
 # crypto
 *.pem
+
+# JSON-config
+*.json
