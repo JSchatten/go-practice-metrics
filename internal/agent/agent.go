@@ -267,6 +267,4 @@ func (a *Agent) sendAllMetrics(wp *workerPool) {
 		// Асинхронная отправка
 		wp.SendBatch(batch)
 	}
-	fmt.Println("pppppppp")
-
 }
