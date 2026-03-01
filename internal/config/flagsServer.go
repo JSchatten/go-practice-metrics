@@ -76,12 +76,52 @@ func InitServerFlags() (*ServerFlags, error) {
 		auditURL      = new(string)
 		// crypto
 		cryptoKeyEnv = new(string)
+		// config
+		configPath = new(string)
 	)
 
 	*serverAddr = constServerAddr
 	*filePath = constFilePath
 	*fileIntervalSec = constFileIntervalSec
 	*restoreFromFile = constRestoreFromFile
+
+	// Получаем путь к конфигурационному файлу
+	if v, exists := os.LookupEnv("CONFIG"); exists {
+		*configPath = v
+	}
+	flag.StringVar(configPath, "c", *configPath, "Path to config file")
+	flag.StringVar(configPath, "config", *configPath, "Path to config file")
+
+	// Загружаем конфигурацию из файла, если указан
+	if *configPath != "" {
+		config, err := LoadServerConfig(*configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load server config: %w", err)
+		}
+		// Применяем значения из файла, если они не заданы через env или флаги
+		if *serverAddr == constServerAddr {
+			*serverAddr = config.Address
+		}
+		if *filePath == constFilePath {
+			*filePath = config.StoreFile
+		}
+		if *fileIntervalSec == constFileIntervalSec {
+			interval, err := time.ParseDuration(config.StoreInterval)
+			if err != nil {
+				return nil, fmt.Errorf("invalid store_interval in config: %w", err)
+			}
+			*fileIntervalSec = int(interval.Seconds())
+		}
+		if *restoreFromFile == constRestoreFromFile {
+			*restoreFromFile = config.Restore
+		}
+		if *postgresDSN == "" {
+			*postgresDSN = config.DatabaseDSN
+		}
+		if *cryptoKeyEnv == "" {
+			*cryptoKeyEnv = config.CryptoKey
+		}
+	}
 
 	// fmt.Println("hashKey q", *hashKeyEnv)
 	// fmt.Println("hashKey q", *hashKeyEnv)
@@ -127,7 +167,7 @@ func InitServerFlags() (*ServerFlags, error) {
 		*auditURL = v
 	}
 
-	// Флаги
+	// Флаги, они перекроют config (если есть) и default
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
 	flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
 	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))

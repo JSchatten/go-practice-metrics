@@ -43,11 +43,49 @@ func InitAgentFlags() (*AgentFlags, error) {
 		hashKey        = new(string)
 		cryptoKey      = new(string)
 		rateLimit      = new(int)
+		// config
+		configPath = new(string)
 	)
 
 	*pollInterval = constPollInterval
 	*reportInterval = constReportInterval
 	*serverAddr = constServerAddr
+
+	// Получаем путь к конфигурационному файлу
+	if v, exists := os.LookupEnv("CONFIG"); exists {
+		*configPath = v
+	}
+	flag.StringVar(configPath, "c", *configPath, "Path to config file")
+	flag.StringVar(configPath, "config", *configPath, "Path to config file")
+
+	// Загружаем конфигурацию из файла, если указан
+	if *configPath != "" {
+		config, err := LoadAgentConfig(*configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent config: %w", err)
+		}
+		// Применяем значения из файла, если они не заданы через env или флаги
+		if *serverAddr == constServerAddr {
+			*serverAddr = config.Address
+		}
+		if *reportInterval == constReportInterval {
+			interval, err := time.ParseDuration(config.ReportInterval)
+			if err != nil {
+				return nil, fmt.Errorf("invalid report_interval in config: %w", err)
+			}
+			*reportInterval = int(interval.Seconds())
+		}
+		if *pollInterval == constPollInterval {
+			interval, err := time.ParseDuration(config.PollInterval)
+			if err != nil {
+				return nil, fmt.Errorf("invalid poll_interval in config: %w", err)
+			}
+			*pollInterval = int(interval.Seconds())
+		}
+		if *cryptoKey == "" {
+			*cryptoKey = config.CryptoKey
+		}
+	}
 
 	// Читаем окружение
 	if v, exists := os.LookupEnv("POLL_INTERVAL"); exists {
@@ -78,7 +116,7 @@ func InitAgentFlags() (*AgentFlags, error) {
 		}
 	}
 
-	// Регистрируем флаги — они перекроют env и default
+	// Регистрируем флаги — они перекроют env, config (если есть) и default
 	flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
 	flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
