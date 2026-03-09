@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 
+	"github.com/JSchatten/go-practice-metrics/internal/crypto"
 	model "github.com/JSchatten/go-practice-metrics/internal/model"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/gin-gonic/gin"
@@ -25,8 +28,38 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		// 	return
 		// }
+		// decoder := json.NewDecoder(c.Request.Body)
 
-		decoder := json.NewDecoder(c.Request.Body)
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			logZero.Logger.Error().Err(err).Msg("Failed to read request body")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+			return
+		}
+
+		// Проверяем наличие приватного ключа для дешифрования
+		if cryptoKey := c.GetString("cryptoKey"); cryptoKey != "" {
+			logZero.Logger.Info().Msgf("Using private key for decryption: %s", cryptoKey)
+			privKey, err := crypto.LoadRSAPrivateKey(cryptoKey)
+			if err != nil {
+				logZero.Logger.Error().Err(err).Msg("Failed to load private key")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load private key"})
+				return
+			}
+
+			// Дешифруем тело запроса
+			decryptedBody, err := crypto.HybridDecrypt(privKey, string(body))
+			if err != nil {
+				logZero.Logger.Error().Err(err).Msg("Failed to hybrid decrypt request body")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hybrid decrypt request body"})
+				return
+			}
+			logZero.Logger.Info().Msgf("Successfully hybrid decrypted %d bytes of data", len(decryptedBody))
+			body = decryptedBody
+		}
+
+		// Декодируем JSON из расшифрованного тела
+		decoder := json.NewDecoder(bytes.NewReader(body))
 		if err := decoder.Decode(&metricIn); err != nil {
 			BodyInvalidJSON(c)
 			return
@@ -50,7 +83,7 @@ func UpdateHandler(storage storage.Storage) gin.HandlerFunc {
 			return
 		}
 
-		err := storage.UpdateMetric(c, &metricIn)
+		err = storage.UpdateMetric(c, &metricIn)
 		if err != nil {
 			FailedToUpdateMetric(c, err)
 			return
@@ -72,7 +105,37 @@ func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 		}
 
 		var metricsIn []model.Metrics
-		decoder := json.NewDecoder(c.Request.Body)
+
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			logZero.Logger.Error().Err(err).Msg("Failed to read request body")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+			return
+		}
+
+		// Проверяем наличие приватного ключа для дешифрования
+		if cryptoKey := c.GetString("cryptoKey"); cryptoKey != "" {
+			logZero.Logger.Info().Msgf("Using private key for decryption: %s", cryptoKey)
+			privKey, err := crypto.LoadRSAPrivateKey(cryptoKey)
+			if err != nil {
+				logZero.Logger.Error().Err(err).Msg("Failed to load private key")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load private key"})
+				return
+			}
+
+			// Дешифруем тело запроса
+			decryptedBody, err := crypto.HybridDecrypt(privKey, string(body))
+			if err != nil {
+				logZero.Logger.Error().Err(err).Msg("Failed to hybrid decrypt request body")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hybrid decrypt request body"})
+				return
+			}
+			logZero.Logger.Info().Msgf("Successfully hybrid decrypted %d bytes of data", len(decryptedBody))
+			body = decryptedBody
+		}
+
+		// Декодируем JSON из расшифрованного тела
+		decoder := json.NewDecoder(bytes.NewReader(body))
 		if err := decoder.Decode(&metricsIn); err != nil {
 			BodyInvalidJSON(c)
 			return
@@ -104,7 +167,7 @@ func UpdateHandlerBatchJSON(storage storage.Storage) gin.HandlerFunc {
 		}
 		c.Set("audit.metrics", metricNames)
 
-		err := storage.UpdateMetricBatch(c, &metricsIn)
+		err = storage.UpdateMetricBatch(c, &metricsIn)
 		if err != nil {
 			FailedToUpdateMetric(c, err)
 			return

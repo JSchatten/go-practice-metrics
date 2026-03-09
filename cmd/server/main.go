@@ -132,6 +132,13 @@ func main() {
 	router.Use(loggingMiddleware.LoggingMiddleware(logZero.Logger))
 	router.Use(hashprocess.HashCheckMiddleware(cfg.HashKey))
 	router.Use(gzipMiddleaware.GzipMiddleware())
+	// Устанавливаем ключ шифрования в контекст
+	if cfg.CryptoKey != "" {
+		router.Use(func(c *gin.Context) {
+			c.Set("cryptoKey", cfg.CryptoKey)
+			c.Next()
+		})
+	}
 	// routes
 	router.POST("/update/", handlers.UpdateHandler(storageObj))
 	router.POST("/updates", handlers.UpdateHandlerBatchJSON(storageObj))
@@ -153,7 +160,7 @@ func main() {
 
 	// Перехват сигналов завершения
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 
 	logZero.Logger.Info().Msg("Shutting down server...")

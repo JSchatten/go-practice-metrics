@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ServerFlags содержит параметры командной строки сервера.
@@ -23,6 +23,7 @@ type ServerFlags struct {
 	ServerAddr       string           // ServerAddr — адрес сервера для прослушивания входящих запросов.
 	PostgresDSN      string           // PostgresDSN — DSN-строка для подключения к PostgreSQL.
 	HashKey          string           // HashKey — ключ для SHA256-хеширования тела запроса.
+	CryptoKey        string           // CryptoKey — путь к файлу с приватным ключом для дешифрования тела запроса.
 	ServerAuditFlags ServerAuditFlags // ServerAuditFlags — параметры аудита.
 	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
 }
@@ -73,6 +74,10 @@ func InitServerFlags() (*ServerFlags, error) {
 		// audit
 		auditFilePath = new(string)
 		auditURL      = new(string)
+		// crypto
+		cryptoKeyEnv = new(string)
+		// config
+		configPath = new(string)
 	)
 
 	*serverAddr = constServerAddr
@@ -80,45 +85,9 @@ func InitServerFlags() (*ServerFlags, error) {
 	*fileIntervalSec = constFileIntervalSec
 	*restoreFromFile = constRestoreFromFile
 
-	// fmt.Println("hashKey q", *hashKeyEnv)
-	// fmt.Println("hashKey q", *hashKeyEnv)
-
-	if v, exists := os.LookupEnv("ADDRESS"); exists {
-		*serverAddr = v
-	}
-	if v, exists := os.LookupEnv("FILE_STORAGE_PATH"); exists {
-		*filePath = v
-	}
-	if v, exists := os.LookupEnv("STORE_INTERVAL"); exists {
-		if val, err := strconv.Atoi(v); err == nil && val >= 0 {
-			*fileIntervalSec = val
-		}
-	}
-	if v, exists := os.LookupEnv("RESTORE"); exists {
-		v = strings.TrimSpace(v)
-		switch strings.ToLower(v) {
-		case "1", "t", "true":
-			*restoreFromFile = true
-		case "0", "f", "false", "":
-			*restoreFromFile = false
-		default:
-			// Пытались передать странное, вернём обратно в дефолт
-			*restoreFromFile = constRestoreFromFile
-		}
-	}
-	if v, exists := os.LookupEnv("DATABASE_DSN"); exists {
-		*postgresDSN = v
-	}
-	if v, exists := os.LookupEnv("KEY"); exists {
-		*hashKeyEnv = v
-	}
-
-	// audit
-	if v, exists := os.LookupEnv("AUDIT_FILE"); exists {
-		*auditFilePath = v
-	}
-	if v, exists := os.LookupEnv("AUDIT_URL"); exists {
-		*auditURL = v
+	// Получаем путь к конфигурационному файлу из окружения
+	if v, exists := os.LookupEnv("CONFIG"); exists {
+		*configPath = v
 	}
 
 	// Флаги
@@ -128,13 +97,49 @@ func InitServerFlags() (*ServerFlags, error) {
 	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
 	flag.StringVar(postgresDSN, "d", *postgresDSN, "DSN string for connectnion to Postgresql")
 	flag.StringVar(hashKeyFlags, "k", *hashKeyEnv, "Hash key for SHA256 (default is empty which is disable crypto)")
-	//	audit
+	flag.StringVar(cryptoKeyEnv, "crypto-key", *cryptoKeyEnv, "Path to private key file for decrypting request body (optional)")
+	// audit
 	flag.StringVar(auditFilePath, "audit-file", *auditFilePath, "Path to audit log file (optional)")
 	flag.StringVar(auditURL, "audit-url", *auditURL, "URL to send audit events (optional)")
+	// config
+	flag.StringVar(configPath, "c", *configPath, "Path to config file")
+	flag.StringVar(configPath, "config", *configPath, "Path to config file")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
 		return nil, fmt.Errorf("error: unknown flags: %v", flag.Args())
+	}
+
+	// Загружаем конфигурацию из файла, если указан
+	if *configPath != "" {
+		config, err := LoadServerConfig(*configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load server config: %w", err)
+		}
+		// Применяем значения из файла, если они не были заданы через флаги
+		if *serverAddr == constServerAddr {
+			*serverAddr = config.Address
+		}
+		if *filePath == constFilePath {
+			*filePath = config.StoreFile
+		}
+		if *fileIntervalSec == constFileIntervalSec {
+			interval, err := time.ParseDuration(config.StoreInterval)
+			if err == nil {
+				*fileIntervalSec = int(interval.Seconds())
+			} else {
+				log.Warn().Err(err).Msg("Invalid store_interval in config")
+			}
+		}
+		if *restoreFromFile {
+			*restoreFromFile = config.Restore
+		}
+		if *postgresDSN == "" {
+			*postgresDSN = config.DatabaseDSN
+		}
+		if *cryptoKeyEnv == "" {
+			*cryptoKeyEnv = config.CryptoKey
+		}
 	}
 
 	// Проверим: был ли флаг -d передан явно
@@ -171,7 +176,8 @@ func InitServerFlags() (*ServerFlags, error) {
 			FileInterval:  time.Duration(*fileIntervalSec) * time.Second,
 			FileIsRestore: *restoreFromFile,
 		},
-		HashKey: *hashKeyFlags,
+		HashKey:   *hashKeyFlags,
+		CryptoKey: *cryptoKeyEnv,
 		ServerAuditFlags: ServerAuditFlags{
 			AuditFilePath: *auditFilePath,
 			AuditURL:      *auditURL,
@@ -186,6 +192,13 @@ func InitServerFlags() (*ServerFlags, error) {
 	// Этот момент касается исключительно работы тестов,
 	// если запуускать с машинки go run .. то всё будет работать
 	if *hashKeyFlags != *hashKeyEnv && *hashKeyFlags == "invalidkey" {
+		result.HashKey = *hashKeyEnv
+	}
+
+	// Проверка флагов после обработки конфигурации
+	if *hashKeyFlags != "" {
+		result.HashKey = *hashKeyFlags
+	} else if *hashKeyEnv != "" {
 		result.HashKey = *hashKeyEnv
 	}
 

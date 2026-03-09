@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/JSchatten/go-practice-metrics/internal/crypto"
 	"github.com/JSchatten/go-practice-metrics/internal/gzip"
 	hashprocess "github.com/JSchatten/go-practice-metrics/internal/hashprocess"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
@@ -16,6 +17,7 @@ import (
 type workerPool struct {
 	serverAddr string
 	hashKey    string
+	cryptoKey  string
 	limiter    *rate.Limiter
 	batchCh    chan []MetricsModel.Metrics
 	ctx        context.Context
@@ -25,7 +27,7 @@ type workerPool struct {
 
 func newWorkerPool(
 	client *resty.Client,
-	serverAddr, hashKey string,
+	serverAddr, hashKey, cryptoKey string,
 	limiter *rate.Limiter,
 	batchCh chan []MetricsModel.Metrics,
 	ctx context.Context,
@@ -35,6 +37,7 @@ func newWorkerPool(
 		client:     client,
 		serverAddr: serverAddr,
 		hashKey:    hashKey,
+		cryptoKey:  cryptoKey,
 		limiter:    limiter,
 		batchCh:    batchCh,
 		ctx:        ctx,
@@ -89,22 +92,45 @@ func (wp *workerPool) sendBatch(metrics []MetricsModel.Metrics) {
 		return
 	}
 
-	compressed, err := gzip.CompressGZIP(jsonData)
+	// прямое шифрование падает при больших батчах, нужно добавить AES
+	// ERR Failed to encrypt request body error="crypto/rsa: message too long for RSA key
+	log.Info().Int("json_size", len(jsonData)).Msg("JSON size before encryption")
+	// Шифруем тело запроса, если указан путь к публичному ключу
+	bodyData := jsonData
+	if wp.cryptoKey != "" {
+		log.Info().Msgf("Using public key for encryption: %s", wp.cryptoKey)
+		pubKey, err := crypto.LoadRSAPublicKey(wp.cryptoKey)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to load public key")
+			return
+		}
+
+		encryptedData, err := crypto.HybridEncrypt(pubKey, jsonData)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to hybrid encrypt request body")
+			return
+		}
+		bodyData = []byte(encryptedData)
+		log.Info().Msgf("Successfully hybrid encrypted %d bytes of data", len(encryptedData))
+	}
+
+	compressed, err := gzip.CompressGZIP(bodyData)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to compress batch")
 		return
 	}
 
-	request := wp.client.R().
-		SetContext(wp.ctx).
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip").
-		SetBody(compressed)
+	request := wp.client.R().SetContext(wp.ctx)
 
 	if wp.hashKey != "" {
 		sign := hashprocess.Sign(compressed, wp.hashKey)
 		request.SetHeader("HashSHA256", sign)
 	}
+
+	// Устанавливаем заголовки и тело после обработки
+	request = request.SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(compressed)
 
 	resp, err := request.Post("http://" + wp.serverAddr + "/updates/")
 	if err != nil {

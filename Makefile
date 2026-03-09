@@ -154,3 +154,7 @@ go_doc_full: go_md_doc go_doc
 # 	go build -o staticlint cmd/staticlint/main.go
 go_staticlint: build_linter
 	go vet -vettool=$(BUILD_DIR)/staticlint ./cmd/... ./internal/... ./pkg/...
+
+gen_crypto_keys:
+	openssl genrsa -out private_test.pem 5096
+	openssl rsa -in private_test.pem -pubout -out public_test.pem

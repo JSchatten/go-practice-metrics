@@ -26,3 +26,19 @@ metrics.json
 # logs from stdout
 *.log
 *.txt
+
+# generated files
+# Tests
+go_test/
+# Docs
+docs/
+
+# staticcheck
+staticlint
+
+# reset.go
+# Игнорировать все сгенерированные .gen.go файлыб ломает go list gopls
+*.gen.go
+
+# crypto
+*.pem
