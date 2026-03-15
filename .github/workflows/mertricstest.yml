@@ -52,9 +52,10 @@ jobs:
           mv $GITHUB_WORKSPACE/.tools/metricstest_v2 /usr/local/bin/metricstest
           mv $GITHUB_WORKSPACE/.tools/random /usr/local/bin/random
 
+# go install golang.org/x/tools/cmd/goimports@latest
       - name: Setup go deps
         run: |
-          go install golang.org/x/tools/cmd/goimports@latest
+          go install golang.org/x/tools/cmd/goimports@v0.42.0
 
 
       - name: Build server binary
