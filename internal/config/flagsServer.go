@@ -26,6 +26,7 @@ type ServerFlags struct {
 	CryptoKey        string           // CryptoKey — путь к файлу с приватным ключом для дешифрования тела запроса.
 	ServerAuditFlags ServerAuditFlags // ServerAuditFlags — параметры аудита.
 	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
+	TrustedSubnet    string           // TrustedSubnet — строковое представление CIDR для доверенной подсети.
 }
 
 // ServerFileFlags содержит параметры хранения метрик в файле.
@@ -78,6 +79,8 @@ func InitServerFlags() (*ServerFlags, error) {
 		cryptoKeyEnv = new(string)
 		// config
 		configPath = new(string)
+		// trusted subnet
+		trustedSubnetEnv = new(string)
 	)
 
 	*serverAddr = constServerAddr
@@ -88,6 +91,11 @@ func InitServerFlags() (*ServerFlags, error) {
 	// Получаем путь к конфигурационному файлу из окружения
 	if v, exists := os.LookupEnv("CONFIG"); exists {
 		*configPath = v
+	}
+
+	// Получаем доверенную подсеть из переменной окружения
+	if v, exists := os.LookupEnv("TRUSTED_SUBNET"); exists {
+		*trustedSubnetEnv = v
 	}
 
 	// Флаги
@@ -104,6 +112,8 @@ func InitServerFlags() (*ServerFlags, error) {
 	// config
 	flag.StringVar(configPath, "c", *configPath, "Path to config file")
 	flag.StringVar(configPath, "config", *configPath, "Path to config file")
+	// trusted subnet
+	flag.StringVar(trustedSubnetEnv, "t", *trustedSubnetEnv, "CIDR string for trusted subnet (optional)")
 
 	flag.Parse()
 	if flag.NArg() > 0 {
@@ -139,6 +149,9 @@ func InitServerFlags() (*ServerFlags, error) {
 		}
 		if *cryptoKeyEnv == "" {
 			*cryptoKeyEnv = config.CryptoKey
+		}
+		if *trustedSubnetEnv == "" {
+			*trustedSubnetEnv = config.TrustedSubnet
 		}
 	}
 
@@ -182,6 +195,7 @@ func InitServerFlags() (*ServerFlags, error) {
 			AuditFilePath: *auditFilePath,
 			AuditURL:      *auditURL,
 		},
+		TrustedSubnet: *trustedSubnetEnv,
 	}
 
 	// Это костыль, почему-то ENV-key и параметрический работают по-разному

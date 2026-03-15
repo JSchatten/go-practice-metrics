@@ -7,12 +7,13 @@ import (
 
 // ServerConfig содержит конфигурацию сервера метрик.
 type ServerConfig struct {
-	Address        string `json:"address"`
-	Restore        bool   `json:"restore"`
-	StoreInterval  string `json:"store_interval"`
-	StoreFile      string `json:"store_file"`
-	DatabaseDSN    string `json:"database_dsn"`
-	CryptoKey      string `json:"crypto_key"`
+	Address       string `json:"address"`
+	Restore       bool   `json:"restore"`
+	StoreInterval string `json:"store_interval"`
+	StoreFile     string `json:"store_file"`
+	DatabaseDSN   string `json:"database_dsn"`
+	CryptoKey     string `json:"crypto_key"`
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 // AgentConfig содержит конфигурацию агента метрик.

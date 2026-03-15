@@ -27,12 +27,14 @@ import (
 	"time"
 
 	"github.com/JSchatten/go-practice-metrics/internal/config"
-	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
+	// handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 	"github.com/JSchatten/go-practice-metrics/internal/hashprocess"
 
 	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+
+	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 
 	audit "github.com/JSchatten/go-practice-metrics/internal/audit"
 
@@ -138,6 +140,11 @@ func main() {
 			c.Set("cryptoKey", cfg.CryptoKey)
 			c.Next()
 		})
+	}
+	// Добавляем middleware для проверки IP-адреса
+	if cfg.TrustedSubnet != "" {
+		logZero.Info().Msg("Trusted Subnet is enabled")
+		router.Use(handlers.IPCheckMiddleware(cfg.TrustedSubnet))
 	}
 	// routes
 	router.POST("/update/", handlers.UpdateHandler(storageObj))

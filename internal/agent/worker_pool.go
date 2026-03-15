@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"sync"
 
 	"github.com/JSchatten/go-practice-metrics/internal/crypto"
@@ -127,9 +128,22 @@ func (wp *workerPool) sendBatch(metrics []MetricsModel.Metrics) {
 		request.SetHeader("HashSHA256", sign)
 	}
 
+	// Получаем IP-адрес клиента
+	// udp, т.к. tcp могут быть блокированы
+	conn, err := net.Dial("udp", "8.8.8.8:80") // Используем Google DNS для определения исходящего IP
+	clientIP := conn.LocalAddr().(*net.UDPAddr).IP.String()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to determine local IP address")
+		clientIP = "127.0.0.1" // fallback на localhost
+	}
+	conn.Close()
+	// Для отладки:
+	// clientIP := "192.168.1.0" // fallback на localhost
+
 	// Устанавливаем заголовки и тело после обработки
 	request = request.SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
+		SetHeader("X-Real-IP", clientIP).
 		SetBody(compressed)
 
 	resp, err := request.Post("http://" + wp.serverAddr + "/updates/")
