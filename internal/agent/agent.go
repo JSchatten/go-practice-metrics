@@ -104,7 +104,7 @@ func (a *Agent) sendMetricsViaGRPC() error {
 	}
 	opts = append(opts, grpc.WithContextDialer(dialer))
 	// Пытаемся подключиться
-	conn, err := grpc.Dial(a.config.GRPCServerAddr, opts...)
+	conn, err := grpc.NewClient(a.config.GRPCServerAddr, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
