@@ -6,6 +6,9 @@ COVERAGE_DIR := ./go_test
 BS_OUT := $(BUILD_DIR)/server_out/server
 BA_OUT := $(BUILD_DIR)/agent_out/agent
 
+# Proto output paht
+PROTO_OUT := ./genproto
+
 # Source files
 SRC_SERVER := ./cmd/server/main.go
 SRC_AGENT := ./cmd/agent/main.go
@@ -45,7 +48,7 @@ recreate_coverage_dir:
 	mkdir -p $(COVERAGE_DIR)
 	echo "Coverage directory prepared"
 
-recreate_dirs: recreate_build_dir recreate_coverage_dir 
+recreate_dirs: recreate_build_dir recreate_coverage_dir
 	echo "recreate directories"
 
 # Generate files
@@ -158,3 +161,10 @@ go_staticlint: build_linter
 gen_crypto_keys:
 	openssl genrsa -out private_test.pem 5096
 	openssl rsa -in private_test.pem -pubout -out public_test.pem
+
+gen_proto:
+	rm -rf $(PROTO_OUT)
+	mkdir $(PROTO_OUT)
+	protoc --go_opt=paths=source_relative --go_out=$(PROTO_OUT) \
+		--go-grpc_opt=paths=source_relative --go-grpc_out=$(PROTO_OUT) \
+		proto/metrics.proto
