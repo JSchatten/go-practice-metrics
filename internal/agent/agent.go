@@ -230,15 +230,15 @@ func (a *Agent) Start() {
 		case <-a.tickerCollect.C:
 			a.collectMetrics(a.ctx)
 		case <-tickerReport.C:
-			// TODO: Сделать переключатель способа отправки?
-			// a.sendAllMetrics(workerPool)
-
 			// Отправка метрик через gRPC, если задан адрес
+			// TODO: Сделать переключатель способа отправки?
 			if a.config.GRPCServerAddr != "" {
 				err := a.sendMetricsViaGRPC()
 				if err != nil {
 					log.Printf("Failed to send metrics via gRPC: %v", err)
 				}
+			} else {
+				a.sendAllMetrics(workerPool)
 			}
 		case <-a.done:
 			log.Println("Agent stopped.")
