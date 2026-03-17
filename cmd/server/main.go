@@ -29,7 +29,7 @@ import (
 
 	"github.com/JSchatten/go-practice-metrics/genproto/proto"
 	"github.com/JSchatten/go-practice-metrics/internal/config"
-	"github.com/JSchatten/go-practice-metrics/internal/service"
+
 	"google.golang.org/grpc"
 
 	// handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
@@ -67,7 +67,7 @@ var buildCommit string
 //   - ctx: контекст для управления жизненным циклом сервера
 //   - cfg: конфигурация сервера, содержащая адрес gRPC-сервера
 //   - storage: хранилище метрик для сохранения полученных данных
-func runGRPCServer(ctx context.Context, cfg *config.ServerFlags, storage service.Storage) {
+func runGRPCServer(cfg *config.ServerFlags, storage storage.Storage) {
 	// Создаем gRPC-сервер с UnaryInterceptor для проверки CIDR
 	srv := grpc.NewServer(
 		grpc.UnaryInterceptor(handlers.IPCheckInterceptor(cfg.TrustedSubnet)),
@@ -95,7 +95,7 @@ func runGRPCServer(ctx context.Context, cfg *config.ServerFlags, storage service
 	logZero.Info().Msg("Shutting down gRPC server...")
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Останавливаем сервер
 	srv.GracefulStop()
@@ -201,7 +201,7 @@ func main() {
 	// Запускаем gRPC-сервер, если задан адрес
 	if cfg.GRPCServerAddr != "" {
 		logZero.Info().Msgf("Starting gRPC server on %s", cfg.GRPCServerAddr)
-		go runGRPCServer(context.Background(), cfg, storageObj)
+		go runGRPCServer(cfg, storageObj)
 	}
 	// routes
 	router.POST("/update/", handlers.UpdateHandler(storageObj))
