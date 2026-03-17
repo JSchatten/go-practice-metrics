@@ -26,6 +26,7 @@ type AgentFlags struct {
 	PollInterval   time.Duration // PollInterval — интервал опроса метрик из runtime.
 	ReportInterval time.Duration // ReportInterval — интервал отправки метрик на сервер.
 	CryptoKey      string        // CryptoKey — путь к файлу с публичным ключом для шифрования тела запроса.
+	GRPCServerAddr string        // GRPCServerAddr — адрес gRPC-сервера для отправки метрик.
 }
 
 // InitAgentFlags инициализирует и возвращает структуру AgentFlags, устанавливая значения флагов.
@@ -46,6 +47,8 @@ func InitAgentFlags() (*AgentFlags, error) {
 		rateLimit      = new(int)
 		// config
 		configPath = new(string)
+		// grpc
+		gRPCServerAddr = new(string)
 	)
 
 	*pollInterval = constPollInterval
@@ -57,10 +60,17 @@ func InitAgentFlags() (*AgentFlags, error) {
 		*configPath = v
 	}
 
+	// Получаем адрес gRPC-сервера из окружения
+	grpcAddr := constGRPCServerAddr
+	if v, exists := os.LookupEnv("GRPC_SERVER_ADDRESS"); exists {
+		grpcAddr = v
+	}
+
 	// Флаги
 	flag.IntVar(pollInterval, "p", *pollInterval, fmt.Sprintf("Poll interval in seconds (default: %d)", constPollInterval))
 	flag.IntVar(reportInterval, "r", *reportInterval, fmt.Sprintf("Report interval in seconds (default: %d)", constReportInterval))
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: %s)", constServerAddr))
+	flag.StringVar(gRPCServerAddr, "g", grpcAddr, fmt.Sprintf("gRPC server address (default: %s)", constGRPCServerAddr))
 	flag.StringVar(hashKey, "k", *hashKey, "Hash key for SHA256 (default is empty which is disable crypto)")
 	flag.StringVar(cryptoKey, "crypto-key", *cryptoKey, "Path to public key file for encrypting request body (optional)")
 	flag.IntVar(rateLimit, "l", *rateLimit, fmt.Sprintf("Limit http-senders (default: %d)", constRateLimit))
@@ -102,6 +112,9 @@ func InitAgentFlags() (*AgentFlags, error) {
 		if *cryptoKey == "" {
 			*cryptoKey = config.CryptoKey
 		}
+		if *gRPCServerAddr == "" {
+			*gRPCServerAddr = config.GRPCServerAddr
+		}
 	}
 
 	// Финальная проверка
@@ -127,5 +140,6 @@ func InitAgentFlags() (*AgentFlags, error) {
 		HashKey:        *hashKey,
 		RateLimit:      *rateLimit,
 		CryptoKey:      *cryptoKey,
+		GRPCServerAddr: grpcAddr,
 	}, nil
 }

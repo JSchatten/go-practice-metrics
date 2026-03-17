@@ -27,6 +27,7 @@ type ServerFlags struct {
 	ServerAuditFlags ServerAuditFlags // ServerAuditFlags — параметры аудита.
 	ServerFileFlags  ServerFileFlags  // ServerFileFlags — параметры хранения метрик в файле.
 	TrustedSubnet    string           // TrustedSubnet — строковое представление CIDR для доверенной подсети.
+	GRPCServerAddr   string           // GRPCServerAddr — адрес для запуска gRPC-сервера.
 }
 
 // ServerFileFlags содержит параметры хранения метрик в файле.
@@ -81,12 +82,15 @@ func InitServerFlags() (*ServerFlags, error) {
 		configPath = new(string)
 		// trusted subnet
 		trustedSubnetEnv = new(string)
+		// grpc
+		gRPCServerPort = new(uint)
 	)
 
 	*serverAddr = constServerAddr
 	*filePath = constFilePath
 	*fileIntervalSec = constFileIntervalSec
 	*restoreFromFile = constRestoreFromFile
+	*gRPCServerPort = constGRPCServerPort
 
 	// Получаем путь к конфигурационному файлу из окружения
 	if v, exists := os.LookupEnv("CONFIG"); exists {
@@ -100,6 +104,7 @@ func InitServerFlags() (*ServerFlags, error) {
 
 	// Флаги
 	flag.StringVar(serverAddr, "a", *serverAddr, fmt.Sprintf("Server address (default: '%s')", constServerAddr))
+	flag.UintVar(gRPCServerPort, "g", *gRPCServerPort, fmt.Sprintf("gRPC server port (default: '%d')", constGRPCServerPort))
 	flag.StringVar(filePath, "f", *filePath, fmt.Sprintf("File path for writing metrics into file (default: '%s')", constFilePath))
 	flag.IntVar(fileIntervalSec, "i", *fileIntervalSec, fmt.Sprintf("Store interval in seconds (default: '%d')", constFileIntervalSec))
 	flag.BoolVar(restoreFromFile, "r", *restoreFromFile, fmt.Sprintf("Restore metrics from file (default: '%t')", constRestoreFromFile))
@@ -153,6 +158,9 @@ func InitServerFlags() (*ServerFlags, error) {
 		if *trustedSubnetEnv == "" {
 			*trustedSubnetEnv = config.TrustedSubnet
 		}
+		if *gRPCServerPort == constGRPCServerPort {
+			*gRPCServerPort = config.GRPCServerPort
+		}
 	}
 
 	// Проверим: был ли флаг -d передан явно
@@ -195,7 +203,8 @@ func InitServerFlags() (*ServerFlags, error) {
 			AuditFilePath: *auditFilePath,
 			AuditURL:      *auditURL,
 		},
-		TrustedSubnet: *trustedSubnetEnv,
+		TrustedSubnet:  *trustedSubnetEnv,
+		GRPCServerAddr: fmt.Sprintf("localhost:%d", *gRPCServerPort),
 	}
 
 	// Это костыль, почему-то ENV-key и параметрический работают по-разному
