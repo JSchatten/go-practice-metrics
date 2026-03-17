@@ -60,4 +60,4 @@ staticlint
 *.json
 
 # gen-proto
-genproto/
+# genproto/
