@@ -14,7 +14,7 @@ type ServerConfig struct {
 	DatabaseDSN    string `json:"database_dsn"`
 	CryptoKey      string `json:"crypto_key"`
 	TrustedSubnet  string `json:"trusted_subnet"`
-	GRPCServerPort uint   `json:"grpc_serrver_port"`
+	GRPCServerPort uint   `json:"grpc_server_port"`
 }
 
 // AgentConfig содержит конфигурацию агента метрик.
