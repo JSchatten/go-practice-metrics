@@ -58,3 +58,6 @@ staticlint
 
 # JSON-config
 *.json
+
+# gen-proto
+# genproto/

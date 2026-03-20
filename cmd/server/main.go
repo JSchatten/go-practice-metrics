@@ -20,19 +20,26 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/JSchatten/go-practice-metrics/genproto/proto"
 	"github.com/JSchatten/go-practice-metrics/internal/config"
-	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
+
+	"google.golang.org/grpc"
+
+	// handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 	"github.com/JSchatten/go-practice-metrics/internal/hashprocess"
 
 	gzipMiddleaware "github.com/JSchatten/go-practice-metrics/internal/gzip"
 	loggingMiddleware "github.com/JSchatten/go-practice-metrics/internal/logging"
 	storage "github.com/JSchatten/go-practice-metrics/internal/service"
+
+	handlers "github.com/JSchatten/go-practice-metrics/internal/handler"
 
 	audit "github.com/JSchatten/go-practice-metrics/internal/audit"
 
@@ -49,6 +56,52 @@ var buildDate string
 
 // Build commit of the application
 var buildCommit string
+
+// runGRPCServer запускает gRPC-сервер для приема метрик от агентов.
+//
+// Создает и настраивает gRPC-сервер, регистрирует сервис Metrics,
+// и запускает сервер на адресе, указанном в конфигурации.
+// Обрабатывает сигналы остановки для graceful shutdown.
+//
+// Параметры:
+//   - ctx: контекст для управления жизненным циклом сервера
+//   - cfg: конфигурация сервера, содержащая адрес gRPC-сервера
+//   - storage: хранилище метрик для сохранения полученных данных
+func runGRPCServer(cfg *config.ServerFlags, storage storage.Storage) {
+	// Создаем gRPC-сервер с UnaryInterceptor для проверки CIDR
+	srv := grpc.NewServer(
+		grpc.UnaryInterceptor(handlers.IPCheckInterceptor(cfg.TrustedSubnet)),
+	)
+	// Регистрируем наш сервис
+	proto.RegisterMetricsServer(srv, handlers.NewGRPCServer(storage))
+
+	// Запускаем сервер в отдельной горутине
+	lis, err := net.Listen("tcp", cfg.GRPCServerAddr)
+	if err != nil {
+		logZero.Fatal().Err(err).Msg("Failed to listen")
+	}
+	go func() {
+		logZero.Info().Msgf("gRPC server starting on %s", cfg.GRPCServerAddr)
+		if err := srv.Serve(lis); err != nil {
+			logZero.Fatal().Err(err).Msg("gRPC server failed to serve")
+		}
+	}()
+
+	// Ожидание сигнала для graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logZero.Info().Msg("Shutting down gRPC server...")
+
+	// Graceful shutdown
+	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Останавливаем сервер
+	srv.GracefulStop()
+
+	logZero.Info().Msg("gRPC server stopped gracefully")
+}
 
 func main() {
 
@@ -138,6 +191,17 @@ func main() {
 			c.Set("cryptoKey", cfg.CryptoKey)
 			c.Next()
 		})
+	}
+	// Добавляем middleware для проверки IP-адреса для HTTP
+	if cfg.TrustedSubnet != "" {
+		logZero.Info().Msg("Trusted Subnet is enabled")
+		router.Use(handlers.IPCheckMiddleware(cfg.TrustedSubnet))
+	}
+
+	// Запускаем gRPC-сервер, если задан адрес
+	if cfg.GRPCServerAddr != "" {
+		logZero.Info().Msgf("Starting gRPC server on %s", cfg.GRPCServerAddr)
+		go runGRPCServer(cfg, storageObj)
 	}
 	// routes
 	router.POST("/update/", handlers.UpdateHandler(storageObj))

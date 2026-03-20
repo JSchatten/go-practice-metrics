@@ -23,19 +23,27 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"net"
 	"runtime"
 	"time"
 
+	"github.com/JSchatten/go-practice-metrics/genproto/proto"
 	"github.com/JSchatten/go-practice-metrics/internal/config"
 	MetricsModel "github.com/JSchatten/go-practice-metrics/internal/model"
 	"github.com/JSchatten/go-practice-metrics/internal/service"
 	"github.com/go-resty/resty/v2"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 const cnstBatchSize = 20
@@ -79,6 +87,119 @@ func NewAgent(cfg *config.AgentFlags) (*Agent, error) {
 	}, nil
 }
 
+// sendMetricsViaGRPC отправляет метрики на сервер по gRPC
+func (a *Agent) sendMetricsViaGRPC() error {
+	// Создаем gRPC-клиент
+	var opts []grpc.DialOption
+	// Настройка TLS, если нужно
+	if a.config.CryptoKey != "" {
+		creds := credentials.NewTLS(&tls.Config{})
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+	// Создаем соединение
+	dialer := func(ctx context.Context, addr string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: time.Second * 5}).DialContext(ctx, "tcp", addr)
+	}
+	opts = append(opts, grpc.WithContextDialer(dialer))
+	// Пытаемся подключиться
+	conn, err := grpc.NewClient(a.config.GRPCServerAddr, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to connect to gRPC server: %w", err)
+	}
+	defer conn.Close()
+	// Создаем клиент
+	client := proto.NewMetricsClient(conn)
+	// Собираем метрики
+	metrics, err := a.collectMetricsForGRPC()
+	if err != nil {
+		return fmt.Errorf("failed to collect metrics: %w", err)
+	}
+	// Формируем запрос
+	req := &proto.UpdateMetricsRequest{Metrics: metrics}
+	// Добавляем IP-адрес в метаданные
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("x-real-ip", getLocalIP()))
+	// Отправляем
+	_, err = client.UpdateMetrics(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to send metrics: %w", err)
+	}
+	return nil
+}
+
+// collectMetricsForGRPC собирает метрики для отправки по gRPC
+func (a *Agent) collectMetricsForGRPC() ([]*proto.Metric, error) {
+	var metrics []*proto.Metric
+
+	// CPU
+	cpuPercent, err := cpu.Percent(time.Second, true)
+	if err == nil && len(cpuPercent) > 0 {
+		for i, v := range cpuPercent {
+			metrics = append(metrics, &proto.Metric{
+				Id:    fmt.Sprintf("CPUutilization%d", i),
+				Type:  proto.Metric_GAUGE,
+				Value: v,
+			})
+		}
+	}
+
+	// Memory
+	memInfo, err := mem.VirtualMemory()
+	if err == nil {
+		metrics = append(metrics, &proto.Metric{
+			Id:    "Alloc",
+			Type:  proto.Metric_GAUGE,
+			Value: float64(memInfo.Used),
+		})
+		metrics = append(metrics, &proto.Metric{
+			Id:    "TotalAlloc",
+			Type:  proto.Metric_GAUGE,
+			Value: float64(memInfo.Total),
+		})
+	}
+
+	// Number of processes
+	procs, err := process.Processes()
+	if err == nil {
+		metrics = append(metrics, &proto.Metric{
+			Id:    "TotalCount",
+			Type:  proto.Metric_GAUGE,
+			Value: float64(len(procs)),
+		})
+	}
+
+	// Heap objects
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	metrics = append(metrics, &proto.Metric{
+		Id:    "HeapObjects",
+		Type:  proto.Metric_GAUGE,
+		Value: float64(m.HeapObjects),
+	})
+
+	// RandomValue
+	metrics = append(metrics, &proto.Metric{
+		Id:    "RandomValue",
+		Type:  proto.Metric_GAUGE,
+		Value: float64(rand.IntN(100)),
+	})
+
+	// PollCount
+	pollCnt := a.storage.GetMetric(a.ctx, "PollCount")
+	count := int64(1)
+	if pollCnt != nil {
+		count = *pollCnt.Delta + 1
+	}
+	metrics = append(metrics, &proto.Metric{
+		Id:    "PollCount",
+		Type:  proto.Metric_COUNTER,
+		Delta: count,
+	})
+
+	return metrics, nil
+}
+
 // Start запускает основной цикл агента: сбор метрик и их отправку.
 // Использует тикеры для периодического выполнения задач.
 // Работает до вызова Stop() или получения сигнала в done.
@@ -109,7 +230,16 @@ func (a *Agent) Start() {
 		case <-a.tickerCollect.C:
 			a.collectMetrics(a.ctx)
 		case <-tickerReport.C:
-			a.sendAllMetrics(workerPool)
+			// Отправка метрик через gRPC, если задан адрес
+			// TODO: Сделать переключатель способа отправки?
+			if a.config.GRPCServerAddr != "" {
+				err := a.sendMetricsViaGRPC()
+				if err != nil {
+					log.Printf("Failed to send metrics via gRPC: %v", err)
+				}
+			} else {
+				a.sendAllMetrics(workerPool)
+			}
 		case <-a.done:
 			log.Println("Agent stopped.")
 			return

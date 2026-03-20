@@ -17,8 +17,10 @@ const (
 	constPollInterval   = 2
 	constReportInterval = 10
 	constRateLimit      = 10
+	constGRPCServerAddr = "localhost:9000"
 	// server
 	constFilePath        = "./metrics.json"
 	constFileIntervalSec = 300
 	constRestoreFromFile = true
+	constGRPCServerPort  = 9000
 )

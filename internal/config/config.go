@@ -13,6 +13,8 @@ type ServerConfig struct {
 	StoreFile      string `json:"store_file"`
 	DatabaseDSN    string `json:"database_dsn"`
 	CryptoKey      string `json:"crypto_key"`
+	TrustedSubnet  string `json:"trusted_subnet"`
+	GRPCServerPort uint   `json:"grpc_server_port"`
 }
 
 // AgentConfig содержит конфигурацию агента метрик.
@@ -21,6 +23,7 @@ type AgentConfig struct {
 	ReportInterval string `json:"report_interval"`
 	PollInterval   string `json:"poll_interval"`
 	CryptoKey      string `json:"crypto_key"`
+	GRPCServerAddr string `json:"grpc_serrver_addr"`
 }
 
 // LoadServerConfig загружает конфигурацию сервера из JSON-файла.
