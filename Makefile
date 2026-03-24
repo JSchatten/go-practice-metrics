@@ -168,3 +168,8 @@ gen_proto:
 	protoc --go_opt=paths=source_relative --go_out=$(PROTO_OUT) \
 		--go-grpc_opt=paths=source_relative --go-grpc_out=$(PROTO_OUT) \
 		proto/metrics.proto
+
+
+protoc --go_opt=paths=source_relative --go_out=./genproto \
+	--go-grpc_opt=paths=source_relative --go-grpc_out=./genproto \
+	proto/metrics.proto
